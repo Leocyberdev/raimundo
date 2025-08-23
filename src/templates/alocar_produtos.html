@@ -69,11 +69,20 @@
                                             </tr>
                                             <tr>
                                                 <td><strong>Estoque Disponível:</strong></td>
-                                                <td><span class="badge bg-info" id="produto-estoque">0</span></td>
+                                                <td>
+                                                    <span class="badge bg-info" id="produto-estoque">0</span>
+                                                    <span id="produto-unidade-estoque" class="text-muted ms-1"></span>
+                                                </td>
                                             </tr>
                                             <tr>
                                                 <td><strong>Preço Unitário:</strong></td>
                                                 <td id="produto-preco">R$ 0,00</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Unidade de Medida:</strong></td>
+                                                <td>
+                                                    <span class="badge bg-secondary" id="produto-unidade">-</span>
+                                                </td>
                                             </tr>
                                         </table>
                                     </div>
@@ -108,10 +117,14 @@
                             <div class="col-md-6 mb-3">
                                 <label for="quantidade" class="form-label">
                                     <i class="bi bi-123"></i> Quantidade a Alocar *
+                                    <span id="label-unidade-quantidade" class="text-muted"></span>
                                 </label>
                                 <input type="number" class="form-control" id="quantidade" 
                                        min="1" required>
-                                <div class="form-text">Máximo disponível: <span id="max-quantidade">0</span></div>
+                                <div class="form-text">
+                                    Máximo disponível: <span id="max-quantidade">0</span>
+                                    <span id="max-unidade" class="text-muted"></span>
+                                </div>
                             </div>
 
                             <div class="col-md-6 mb-3">
@@ -616,16 +629,27 @@ function selecionarProduto(produto) {
     document.getElementById('produto-local').textContent = produto.local_produto || produto.local || '-';
     
     const estoque = produto.quantidade_estoque || produto.estoque || 0;
+    const unidadeMedida = produto.unidade_medida || 'unidade';
     const isAtivo = produto.ativo !== false;
     
+    // Configurar exibição da unidade de medida
+    const unidadeFormatada = formatarUnidadeMedida(unidadeMedida);
+    
     document.getElementById('produto-estoque').textContent = estoque;
+    document.getElementById('produto-unidade-estoque').textContent = unidadeFormatada.sufixo;
+    document.getElementById('produto-unidade').textContent = unidadeFormatada.nome;
     document.getElementById('produto-preco').textContent = formatCurrency(produto.preco || 0);
 
-    // Configurar quantidade máxima
-    document.getElementById('max-quantidade').textContent = estoque;
+    // Atualizar labels com a unidade
+    document.getElementById('label-unidade-quantidade').textContent = `(em ${unidadeFormatada.nome})`;
+    document.getElementById('max-unidade').textContent = unidadeFormatada.sufixo;
+
+    // Configurar quantidade máxima e step baseado na unidade
+    document.getElementById('max-quantidade').textContent = formatarQuantidade(estoque, unidadeMedida);
     const quantidadeInput = document.getElementById('quantidade');
     quantidadeInput.max = estoque;
-    quantidadeInput.value = (estoque > 0 && isAtivo) ? 1 : 0;
+    quantidadeInput.step = unidadeFormatada.step;
+    quantidadeInput.value = (estoque > 0 && isAtivo) ? unidadeFormatada.valorInicial : 0;
 
     // Mostrar seção do produto selecionado
     document.getElementById('produto-selecionado').style.display = 'block';
@@ -691,6 +715,9 @@ function atualizarResumo() {
 
     const valorTotal = quantidade * produtoSelecionado.preco;
 
+    const unidadeMedida = produtoSelecionado.unidade_medida || 'unidade';
+    const quantidadeFormatada = formatarQuantidade(quantidade, unidadeMedida);
+
     const resumo = document.getElementById('resumo-alocacao');
     resumo.innerHTML = `
         <div class="mb-2">
@@ -698,7 +725,7 @@ function atualizarResumo() {
             <small>${produtoSelecionado.codigo} - ${produtoSelecionado.nome}</small>
         </div>
         <div class="mb-2">
-            <strong>Quantidade:</strong> ${quantidade} unidades<br>
+            <strong>Quantidade:</strong> ${quantidadeFormatada}<br>
             <strong>Valor Total:</strong> ${formatCurrency(valorTotal)}
         </div>
         ${obra ? `<div class="mb-2"><strong>Obra:</strong><br><small>${obra.numero_obra} - ${obra.nome_obra}</small></div>` : ''}
@@ -741,7 +768,7 @@ function mostrarModalConfirmacao() {
             </tr>
             <tr>
                 <td><strong>Quantidade:</strong></td>
-                <td>${quantidade} unidades</td>
+                <td>${formatarQuantidade(quantidade, produtoSelecionado.unidade_medida || 'unidade')}</td>
             </tr>
             <tr>
                 <td><strong>Obra:</strong></td>
@@ -760,7 +787,7 @@ function mostrarModalConfirmacao() {
 
         <div class="alert alert-warning">
             <i class="bi bi-exclamation-triangle"></i>
-            Esta ação irá reduzir o estoque do produto de ${produtoSelecionado.quantidade_estoque || produtoSelecionado.estoque} para ${(produtoSelecionado.quantidade_estoque || produtoSelecionado.estoque) - quantidade} unidades.
+            Esta ação irá reduzir o estoque do produto de ${formatarQuantidade(produtoSelecionado.quantidade_estoque || produtoSelecionado.estoque, produtoSelecionado.unidade_medida || 'unidade')} para ${formatarQuantidade((produtoSelecionado.quantidade_estoque || produtoSelecionado.estoque) - quantidade, produtoSelecionado.unidade_medida || 'unidade')}.
         </div>
     `;
 
@@ -918,6 +945,53 @@ function formatCurrency(value) {
         style: 'currency', 
         currency: 'BRL' 
     }).format(value || 0);
+}
+
+function formatarUnidadeMedida(unidade) {
+    const unidades = {
+        'unidade': {
+            nome: 'unidades',
+            sufixo: 'un',
+            step: '1',
+            valorInicial: 1
+        },
+        'kilo': {
+            nome: 'quilogramas',
+            sufixo: 'kg',
+            step: '0.001',
+            valorInicial: 0.1
+        },
+        'pacote': {
+            nome: 'pacotes',
+            sufixo: 'pct',
+            step: '1',
+            valorInicial: 1
+        },
+        'metros': {
+            nome: 'metros',
+            sufixo: 'm',
+            step: '0.01',
+            valorInicial: 1
+        },
+        'cento': {
+            nome: 'centos',
+            sufixo: 'cto',
+            step: '0.01',
+            valorInicial: 0.1
+        }
+    };
+    
+    return unidades[unidade] || unidades['unidade'];
+}
+
+function formatarQuantidade(quantidade, unidade) {
+    const config = formatarUnidadeMedida(unidade);
+    
+    if (unidade === 'unidade' || unidade === 'pacote') {
+        return `${Math.floor(quantidade)} ${config.sufixo}`;
+    } else {
+        return `${parseFloat(quantidade).toFixed(quantidade % 1 === 0 ? 0 : 3)} ${config.sufixo}`;
+    }
 }
 
 function formatDate(dateString) {
