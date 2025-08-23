@@ -494,27 +494,29 @@ function configurarBuscaFornecedor() {
 
         clearTimeout(timeoutFornecedor);
 
-        if (termo.length < 2) {
+        if (termo.length < 1) {
             resultsDiv.style.display = 'none';
             return;
         }
 
         timeoutFornecedor = setTimeout(async () => {
             try {
-                const response = await fetch(`/api/fornecedores/busca?q=${encodeURIComponent(termo)}`);
-                const fornecedores = await response.json();
+                // Buscar fornecedores dos produtos existentes
+                const produtos = produtosCarregados.filter(p => 
+                    p.fornecedor && p.fornecedor.toLowerCase().includes(termo.toLowerCase())
+                );
+                
+                // Extrair fornecedores únicos
+                const fornecedoresUnicos = [...new Set(produtos.map(p => p.fornecedor))];
 
-                resultsDiv.innerHTML = ''; // Limpa resultados anteriores
-                if (fornecedores.length > 0) {
-                    fornecedores.forEach(fornecedor => {
+                resultsDiv.innerHTML = '';
+                if (fornecedoresUnicos.length > 0) {
+                    fornecedoresUnicos.forEach(fornecedor => {
                         const item = document.createElement('div');
                         item.className = 'search-item';
-                        item.innerHTML = `
-                            <strong>${fornecedor.nome}</strong>
-                            ${fornecedor.cnpj ? `<br><small class="text-muted">${fornecedor.cnpj}</small>` : ''}
-                        `;
+                        item.innerHTML = `<strong>${fornecedor}</strong>`;
                         item.onclick = function() {
-                            selecionarFornecedor(fornecedor.nome);
+                            selecionarFornecedor(fornecedor);
                         };
                         resultsDiv.appendChild(item);
                     });

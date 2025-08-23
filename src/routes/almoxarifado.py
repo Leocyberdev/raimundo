@@ -142,13 +142,20 @@ def criar_produto():
         if Produto.query.filter_by(codigo=data['codigo']).first():
             return jsonify({'error': 'Código já existe'}), 400
 
+        # Buscar informações do local se ID foi fornecido
+        local_texto = ''
+        if data.get('local_produto_id'):
+            local = Local.query.get(data['local_produto_id'])
+            if local:
+                local_texto = f"{local.nome_local} - {local.posicao}" if local.posicao else local.nome_local
+
         produto = Produto(
             codigo=data['codigo'],
             nome=data['nome'],
             descricao=data.get('descricao', ''),
             fornecedor=data.get('fornecedor', ''),
             categoria=data['categoria'],
-            local_produto=data.get('local_produto', ''),
+            local_produto=local_texto,
             preco=float(data.get('preco', 0)),
             quantidade_estoque=int(data.get('quantidade_estoque', 0))
         )
@@ -555,7 +562,10 @@ def busca_produtos():
             'id': p.id,
             'codigo': p.codigo,
             'nome': p.nome,
+            'categoria': p.categoria,
+            'local_produto': p.local_produto,
             'estoque': p.quantidade_estoque,
+            'quantidade_estoque': p.quantidade_estoque,
             'preco': p.preco
         } for p in produtos])
     except Exception as e:

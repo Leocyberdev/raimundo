@@ -259,6 +259,11 @@ async function carregarFuncionarios() {
                 option.textContent = `${funcionario.nome} - ${funcionario.cargo}`;
                 select.appendChild(option);
             });
+
+            // Pré-selecionar o primeiro funcionário (usuário logado)
+            if (funcionarios.length > 0) {
+                select.value = funcionarios[0].id;
+            }
         }
     } catch (error) {
         showAlert('Erro ao carregar funcionários: ' + error.message, 'danger');
@@ -360,18 +365,19 @@ function selecionarProduto(produto) {
     document.getElementById('produto-nome').textContent = produto.nome;
     document.getElementById('produto-categoria').textContent = produto.categoria || '-';
     document.getElementById('produto-local').textContent = produto.local_produto || '-';
-    document.getElementById('produto-estoque').textContent = produto.estoque;
+    document.getElementById('produto-estoque').textContent = produto.quantidade_estoque || produto.estoque;
     document.getElementById('produto-preco').textContent = formatCurrency(produto.preco);
 
     // Configurar quantidade máxima
-    document.getElementById('max-quantidade').textContent = produto.estoque;
-    document.getElementById('quantidade').max = produto.estoque;
-    document.getElementById('quantidade').value = Math.min(1, produto.estoque);
+    const estoque = produto.quantidade_estoque || produto.estoque;
+    document.getElementById('max-quantidade').textContent = estoque;
+    document.getElementById('quantidade').max = estoque;
+    document.getElementById('quantidade').value = Math.min(1, estoque);
 
     // Mostrar seções
     document.getElementById('produto-selecionado').style.display = 'block';
 
-    if (produto.estoque > 0) {
+    if (estoque > 0) {
         document.getElementById('dados-alocacao').style.display = 'block';
         calcularValorTotal();
         atualizarResumo();
