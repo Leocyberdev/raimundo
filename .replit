@@ -21,4 +21,4 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python src/main.py"
+args = "python src/migrate_db.py && python src/main.py"
