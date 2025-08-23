@@ -200,6 +200,44 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.search-container {
+    position: relative;
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.search-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    background: white;
+}
+
+.search-item:hover {
+    background-color: #f8f9fa !important;
+}
+
+.search-item:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
 let produtoSelecionado = null;
@@ -381,9 +419,11 @@ function mostrarResultadosBusca(produtos) {
         const item = document.createElement('div');
         item.className = 'search-item';
         item.style.cursor = 'pointer';
+        item.style.padding = '10px';
+        item.style.borderBottom = '1px solid #eee';
 
         const estoque = produto.quantidade_estoque || produto.estoque || 0;
-        const isAtivo = produto.ativo !== false; // Assumir ativo se não especificado
+        const isAtivo = produto.ativo !== false;
         
         let statusEstoque;
         if (!isAtivo) {
@@ -397,7 +437,7 @@ function mostrarResultadosBusca(produtos) {
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <strong>${produto.codigo}</strong> - ${produto.nome}<br>
+                    <strong>${produto.codigo || 'N/A'}</strong> - ${produto.nome || 'N/A'}<br>
                     <small class="text-muted">
                         ${produto.categoria || 'Sem categoria'} | 
                         Preço: ${formatCurrency(produto.preco || 0)}
@@ -407,20 +447,21 @@ function mostrarResultadosBusca(produtos) {
             </div>
         `;
 
-        // Adicionar hover effect
+        // Hover effects
         item.addEventListener('mouseenter', function() {
             this.style.backgroundColor = '#f8f9fa';
         });
         
         item.addEventListener('mouseleave', function() {
-            this.style.backgroundColor = '';
+            this.style.backgroundColor = 'white';
         });
 
-        item.onclick = function() {
+        item.addEventListener('click', function() {
+            console.log('Produto selecionado:', produto);
             selecionarProduto(produto);
             document.getElementById('busca-produto').value = `${produto.codigo} - ${produto.nome}`;
             results.style.display = 'none';
-        };
+        });
 
         results.appendChild(item);
     });
@@ -429,33 +470,38 @@ function mostrarResultadosBusca(produtos) {
 }
 
 function selecionarProduto(produto) {
+    console.log('Selecionando produto:', produto);
     produtoSelecionado = produto;
 
     // Preencher informações do produto
     document.getElementById('produto-codigo').textContent = produto.codigo || '-';
     document.getElementById('produto-nome').textContent = produto.nome || '-';
     document.getElementById('produto-categoria').textContent = produto.categoria || '-';
-    document.getElementById('produto-local').textContent = produto.local_produto || '-';
+    document.getElementById('produto-local').textContent = produto.local_produto || produto.local || '-';
     
     const estoque = produto.quantidade_estoque || produto.estoque || 0;
+    const isAtivo = produto.ativo !== false;
+    
     document.getElementById('produto-estoque').textContent = estoque;
     document.getElementById('produto-preco').textContent = formatCurrency(produto.preco || 0);
 
     // Configurar quantidade máxima
     document.getElementById('max-quantidade').textContent = estoque;
-    document.getElementById('quantidade').max = estoque;
-    document.getElementById('quantidade').value = estoque > 0 ? 1 : 0;
+    const quantidadeInput = document.getElementById('quantidade');
+    quantidadeInput.max = estoque;
+    quantidadeInput.value = (estoque > 0 && isAtivo) ? 1 : 0;
 
-    // Mostrar seções
+    // Mostrar seção do produto selecionado
     document.getElementById('produto-selecionado').style.display = 'block';
 
-    if (estoque > 0) {
+    if (estoque > 0 && isAtivo) {
         document.getElementById('dados-alocacao').style.display = 'block';
         calcularValorTotal();
         atualizarResumo();
     } else {
         document.getElementById('dados-alocacao').style.display = 'none';
-        showAlert('Produto sem estoque disponível para alocação', 'warning');
+        const motivo = !isAtivo ? 'produto inativo' : 'estoque zerado';
+        showAlert(`Produto indisponível para alocação: ${motivo}`, 'warning');
     }
 }
 

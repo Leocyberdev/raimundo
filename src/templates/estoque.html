@@ -653,21 +653,29 @@ async function editarProduto(produtoId) {
         }
 
         produtoEdicao = produto;
+        console.log('Produto para edição:', produto);
+
+        // Verificar se o modal existe
+        const modalElement = document.getElementById('modalEdicao');
+        if (!modalElement) {
+            throw new Error('Modal de edição não encontrado no DOM');
+        }
 
         // Carregar categorias primeiro
-        await carregarCategoriasEdicao();
+        try {
+            await carregarCategoriasEdicao();
+        } catch (error) {
+            console.warn('Erro ao carregar categorias, continuando sem elas:', error);
+        }
         
         // Preencher os campos do formulário
         preencherFormularioEdicao(produto);
         
         // Exibir o modal
-        const modalElement = document.getElementById('modalEdicao');
-        if (modalElement) {
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
-        } else {
-            throw new Error('Modal de edição não encontrado no DOM');
-        }
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        console.log('Modal de edição aberto com sucesso');
         
     } catch (error) {
         console.error('Erro ao editar produto:', error);
@@ -677,36 +685,51 @@ async function editarProduto(produtoId) {
 
 // Função auxiliar para preencher formulário
 function preencherFormularioEdicao(produto) {
+    console.log('Preenchendo formulário com:', produto);
+    
     const campos = {
         'edit-nome': produto.nome || '',
         'edit-descricao': produto.descricao || '',
         'edit-fornecedor': produto.fornecedor || '',
         'edit-local': produto.local_produto || '',
         'edit-preco': produto.preco || 0,
-        'edit-status': produto.ativo ? 'true' : 'false',
+        'edit-status': produto.ativo !== false ? 'true' : 'false',
         'edit-senha': ''
     };
 
+    // Preencher campos de texto
     Object.keys(campos).forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) {
             elemento.value = campos[id];
+            console.log(`Campo ${id} preenchido com:`, campos[id]);
         } else {
-            console.warn(`Elemento ${id} não encontrado`);
+            console.warn(`Elemento ${id} não encontrado no DOM`);
         }
     });
 
-    // Selecionar categoria após carregar as opções
+    // Preencher categoria
     setTimeout(() => {
         const selectCategoria = document.getElementById('edit-categoria');
         if (selectCategoria && produto.categoria) {
-            selectCategoria.value = produto.categoria;
+            // Verificar se a categoria existe nas opções
+            const option = Array.from(selectCategoria.options).find(opt => opt.value === produto.categoria);
+            if (option) {
+                selectCategoria.value = produto.categoria;
+                console.log('Categoria selecionada:', produto.categoria);
+            } else {
+                console.warn('Categoria não encontrada nas opções:', produto.categoria);
+            }
+        } else {
+            console.warn('Select de categoria não encontrado ou categoria vazia');
         }
-    }, 100);
+    }, 200);
 }
 
 // Carregar categorias para o select de edição
 async function carregarCategoriasEdicao() {
+    console.log('Carregando categorias para edição...');
+    
     try {
         const response = await fetch('/api/categorias');
         
@@ -730,32 +753,42 @@ async function carregarCategoriasEdicao() {
         optionDefault.textContent = 'Selecione uma categoria...';
         select.appendChild(optionDefault);
 
+        // Adicionar categorias básicas se não houver categorias da API
+        const categoriasBasicas = ['Curva A', 'Curva B', 'Curva C'];
+        
         if (categorias && Array.isArray(categorias) && categorias.length > 0) {
-            categorias
-                .filter(cat => cat.ativa)
-                .forEach(categoria => {
-                    const option = document.createElement('option');
-                    option.value = categoria.nome;
-                    option.textContent = categoria.nome;
-                    select.appendChild(option);
-                });
-            
-            console.log(`Carregadas ${categorias.length} categorias para edição`);
+            const categoriasAtivas = categorias.filter(cat => cat.ativa !== false);
+            categoriasAtivas.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.nome;
+                option.textContent = categoria.nome;
+                select.appendChild(option);
+            });
+            console.log(`Carregadas ${categoriasAtivas.length} categorias da API para edição`);
         } else {
-            const optionEmpty = document.createElement('option');
-            optionEmpty.value = '';
-            optionEmpty.textContent = 'Nenhuma categoria disponível';
-            optionEmpty.disabled = true;
-            select.appendChild(optionEmpty);
+            // Fallback para categorias básicas
+            categoriasBasicas.forEach(nome => {
+                const option = document.createElement('option');
+                option.value = nome;
+                option.textContent = nome;
+                select.appendChild(option);
+            });
+            console.log('Carregadas categorias básicas para edição');
         }
         
     } catch (error) {
         console.error('Erro ao carregar categorias para edição:', error);
         const select = document.getElementById('edit-categoria');
         if (select) {
-            select.innerHTML = '<option value="">Erro ao carregar categorias</option>';
+            // Fallback em caso de erro
+            select.innerHTML = `
+                <option value="">Selecione uma categoria...</option>
+                <option value="Curva A">Curva A</option>
+                <option value="Curva B">Curva B</option>
+                <option value="Curva C">Curva C</option>
+            `;
         }
-        throw error; // Re-lançar para que a função chamadora possa tratar
+        // Não re-lançar o erro para não impedir a abertura do modal
     }
 }
 
