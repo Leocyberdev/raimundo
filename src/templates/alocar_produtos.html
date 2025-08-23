@@ -34,7 +34,7 @@
                         </div>
                         <div class="form-text">Digite pelo menos 2 caracteres para buscar</div>
                     </div>
-                    
+
                     <!-- Informações do Produto Selecionado -->
                     <div id="produto-selecionado" style="display: none;">
                         <div class="card bg-light mb-4">
@@ -64,6 +64,10 @@
                                     <div class="col-md-6">
                                         <table class="table table-sm table-borderless">
                                             <tr>
+                                                <td><strong>Local:</strong></td>
+                                                <td id="produto-local">-</td>
+                                            </tr>
+                                            <tr>
                                                 <td><strong>Estoque Disponível:</strong></td>
                                                 <td><span class="badge bg-info" id="produto-estoque">0</span></td>
                                             </tr>
@@ -71,17 +75,13 @@
                                                 <td><strong>Preço Unitário:</strong></td>
                                                 <td id="produto-preco">R$ 0,00</td>
                                             </tr>
-                                            <tr>
-                                                <td><strong>Local:</strong></td>
-                                                <td id="produto-local">-</td>
-                                            </tr>
                                         </table>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Dados da Alocação -->
                     <div id="dados-alocacao" style="display: none;">
                         <div class="row">
@@ -93,7 +93,7 @@
                                     <option value="">Selecione a obra</option>
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-6 mb-3">
                                 <label for="funcionario-select" class="form-label">
                                     <i class="bi bi-person"></i> Funcionário Responsável *
@@ -103,7 +103,7 @@
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="quantidade" class="form-label">
@@ -113,7 +113,7 @@
                                        min="1" required>
                                 <div class="form-text">Máximo disponível: <span id="max-quantidade">0</span></div>
                             </div>
-                            
+
                             <div class="col-md-6 mb-3">
                                 <label for="valor-total" class="form-label">
                                     <i class="bi bi-currency-dollar"></i> Valor Total
@@ -121,7 +121,7 @@
                                 <input type="text" class="form-control" id="valor-total" readonly>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="observacoes" class="form-label">
                                 <i class="bi bi-chat-text"></i> Observações
@@ -129,7 +129,7 @@
                             <textarea class="form-control" id="observacoes" rows="3" 
                                       placeholder="Observações sobre a alocação (opcional)"></textarea>
                         </div>
-                        
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <button type="button" class="btn btn-secondary me-md-2" onclick="limparFormulario()">
                                 <i class="bi bi-arrow-clockwise"></i> Limpar
@@ -143,7 +143,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Resumo e Histórico -->
     <div class="col-lg-4">
         <!-- Resumo da Alocação -->
@@ -159,7 +159,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Últimas Alocações -->
         <div class="card">
             <div class="card-header">
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
     carregarUltimasAlocacoes();
     configurarBuscaInteligente();
     configurarFormulario();
-    
+
     // Verificar se há produto pré-selecionado na URL
     const urlParams = new URLSearchParams(window.location.search);
     const produtoId = urlParams.get('produto');
@@ -225,12 +225,12 @@ async function carregarObras() {
     try {
         const response = await fetch('/api/obras');
         const data = await response.json();
-        
+
         if (response.ok) {
             obras = data;
             const select = document.getElementById('obra-select');
             select.innerHTML = '<option value="">Selecione a obra</option>';
-            
+
             obras.forEach(obra => {
                 const option = document.createElement('option');
                 option.value = obra.id;
@@ -247,12 +247,12 @@ async function carregarFuncionarios() {
     try {
         const response = await fetch('/api/funcionarios');
         const data = await response.json();
-        
+
         if (response.ok) {
             funcionarios = data;
             const select = document.getElementById('funcionario-select');
             select.innerHTML = '<option value="">Selecione o funcionário</option>';
-            
+
             funcionarios.forEach(funcionario => {
                 const option = document.createElement('option');
                 option.value = funcionario.id;
@@ -269,7 +269,7 @@ async function carregarProdutoPorId(produtoId) {
     try {
         const response = await fetch(`/api/produtos?busca=${produtoId}`);
         const produtos = await response.json();
-        
+
         if (response.ok && produtos.length > 0) {
             const produto = produtos.find(p => p.id == produtoId);
             if (produto) {
@@ -285,19 +285,19 @@ async function carregarProdutoPorId(produtoId) {
 function configurarBuscaInteligente() {
     const input = document.getElementById('busca-produto');
     const results = document.getElementById('search-results');
-    
+
     input.addEventListener('input', async function() {
         const termo = this.value.trim();
-        
+
         if (termo.length < 2) {
             results.style.display = 'none';
             return;
         }
-        
+
         try {
             const response = await fetch(`/api/busca/produtos?q=${encodeURIComponent(termo)}`);
             const produtos = await response.json();
-            
+
             if (response.ok) {
                 mostrarResultadosBusca(produtos);
             }
@@ -305,7 +305,7 @@ function configurarBuscaInteligente() {
             console.error('Erro na busca:', error);
         }
     });
-    
+
     // Fechar resultados ao clicar fora
     document.addEventListener('click', function(e) {
         if (!input.contains(e.target) && !results.contains(e.target)) {
@@ -317,18 +317,18 @@ function configurarBuscaInteligente() {
 function mostrarResultadosBusca(produtos) {
     const results = document.getElementById('search-results');
     results.innerHTML = '';
-    
+
     if (produtos.length === 0) {
         results.innerHTML = '<div class="search-item">Nenhum produto encontrado</div>';
     } else {
         produtos.forEach(produto => {
             const item = document.createElement('div');
             item.className = 'search-item';
-            
+
             const statusEstoque = produto.estoque === 0 ? 
                 '<span class="badge bg-danger">Sem estoque</span>' : 
                 `<span class="badge bg-success">Estoque: ${produto.estoque}</span>`;
-            
+
             item.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -338,39 +338,39 @@ function mostrarResultadosBusca(produtos) {
                     <div>${statusEstoque}</div>
                 </div>
             `;
-            
+
             item.onclick = function() {
                 selecionarProduto(produto);
                 document.getElementById('busca-produto').value = produto.codigo;
                 results.style.display = 'none';
             };
-            
+
             results.appendChild(item);
         });
     }
-    
+
     results.style.display = 'block';
 }
 
 function selecionarProduto(produto) {
     produtoSelecionado = produto;
-    
+
     // Preencher informações do produto
     document.getElementById('produto-codigo').textContent = produto.codigo;
     document.getElementById('produto-nome').textContent = produto.nome;
-    document.getElementById('produto-categoria').innerHTML = `<span class="badge bg-primary">${produto.categoria}</span>`;
+    document.getElementById('produto-categoria').textContent = produto.categoria || '-';
+    document.getElementById('produto-local').textContent = produto.local_produto || '-';
     document.getElementById('produto-estoque').textContent = produto.estoque;
     document.getElementById('produto-preco').textContent = formatCurrency(produto.preco);
-    document.getElementById('produto-local').textContent = produto.local_produto || '-';
-    
+
     // Configurar quantidade máxima
     document.getElementById('max-quantidade').textContent = produto.estoque;
     document.getElementById('quantidade').max = produto.estoque;
     document.getElementById('quantidade').value = Math.min(1, produto.estoque);
-    
+
     // Mostrar seções
     document.getElementById('produto-selecionado').style.display = 'block';
-    
+
     if (produto.estoque > 0) {
         document.getElementById('dados-alocacao').style.display = 'block';
         calcularValorTotal();
@@ -387,11 +387,11 @@ function configurarFormulario() {
         calcularValorTotal();
         atualizarResumo();
     });
-    
+
     // Atualizar resumo quando obra ou funcionário mudarem
     document.getElementById('obra-select').addEventListener('change', atualizarResumo);
     document.getElementById('funcionario-select').addEventListener('change', atualizarResumo);
-    
+
     // Submissão do formulário
     document.getElementById('form-alocacao').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -401,25 +401,25 @@ function configurarFormulario() {
 
 function calcularValorTotal() {
     if (!produtoSelecionado) return;
-    
+
     const quantidade = parseInt(document.getElementById('quantidade').value) || 0;
     const valorTotal = quantidade * produtoSelecionado.preco;
-    
+
     document.getElementById('valor-total').value = formatCurrency(valorTotal);
 }
 
 function atualizarResumo() {
     if (!produtoSelecionado) return;
-    
+
     const quantidade = parseInt(document.getElementById('quantidade').value) || 0;
     const obraId = document.getElementById('obra-select').value;
     const funcionarioId = document.getElementById('funcionario-select').value;
-    
+
     const obra = obras.find(o => o.id == obraId);
     const funcionario = funcionarios.find(f => f.id == funcionarioId);
-    
+
     const valorTotal = quantidade * produtoSelecionado.preco;
-    
+
     const resumo = document.getElementById('resumo-alocacao');
     resumo.innerHTML = `
         <div class="mb-2">
@@ -437,22 +437,22 @@ function atualizarResumo() {
 
 function mostrarModalConfirmacao() {
     if (!validarFormulario()) return;
-    
+
     const quantidade = parseInt(document.getElementById('quantidade').value);
     const obraId = document.getElementById('obra-select').value;
     const funcionarioId = document.getElementById('funcionario-select').value;
     const observacoes = document.getElementById('observacoes').value;
-    
+
     const obra = obras.find(o => o.id == obraId);
     const funcionario = funcionarios.find(f => f.id == funcionarioId);
     const valorTotal = quantidade * produtoSelecionado.preco;
-    
+
     const modalBody = document.getElementById('modal-confirmacao-body');
     modalBody.innerHTML = `
         <div class="alert alert-info">
             <strong>Confirme os dados da alocação:</strong>
         </div>
-        
+
         <table class="table table-sm">
             <tr>
                 <td><strong>Produto:</strong></td>
@@ -476,13 +476,13 @@ function mostrarModalConfirmacao() {
             </tr>
             ${observacoes ? `<tr><td><strong>Observações:</strong></td><td>${observacoes}</td></tr>` : ''}
         </table>
-        
+
         <div class="alert alert-warning">
             <i class="bi bi-exclamation-triangle"></i>
             Esta ação irá reduzir o estoque do produto de ${produtoSelecionado.estoque} para ${produtoSelecionado.estoque - quantidade} unidades.
         </div>
     `;
-    
+
     new bootstrap.Modal(document.getElementById('modalConfirmacao')).show();
 }
 
@@ -491,7 +491,7 @@ async function confirmarAlocacao() {
     const obraId = document.getElementById('obra-select').value;
     const funcionarioId = document.getElementById('funcionario-select').value;
     const observacoes = document.getElementById('observacoes').value;
-    
+
     const dados = {
         produto_id: produtoSelecionado.id,
         obra_id: parseInt(obraId),
@@ -499,7 +499,7 @@ async function confirmarAlocacao() {
         quantidade: quantidade,
         observacoes: observacoes
     };
-    
+
     try {
         const response = await fetch('/api/alocar', {
             method: 'POST',
@@ -508,9 +508,9 @@ async function confirmarAlocacao() {
             },
             body: JSON.stringify(dados)
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
             showAlert('Produto alocado com sucesso!', 'success');
             bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
@@ -532,28 +532,28 @@ function validarFormulario() {
         showAlert('Selecione um produto', 'warning');
         return false;
     }
-    
+
     const quantidade = parseInt(document.getElementById('quantidade').value);
     if (!quantidade || quantidade <= 0) {
         showAlert('Informe uma quantidade válida', 'warning');
         return false;
     }
-    
+
     if (quantidade > produtoSelecionado.estoque) {
         showAlert('Quantidade maior que o estoque disponível', 'warning');
         return false;
     }
-    
+
     if (!document.getElementById('obra-select').value) {
         showAlert('Selecione uma obra', 'warning');
         return false;
     }
-    
+
     if (!document.getElementById('funcionario-select').value) {
         showAlert('Selecione um funcionário', 'warning');
         return false;
     }
-    
+
     return true;
 }
 
@@ -561,7 +561,7 @@ async function carregarUltimasAlocacoes() {
     try {
         const response = await fetch('/api/historico?periodo=semana');
         const movimentacoes = await response.json();
-        
+
         if (response.ok) {
             const alocacoes = movimentacoes.filter(m => m.tipo_movimentacao === 'ALOCACAO').slice(0, 5);
             atualizarUltimasAlocacoes(alocacoes);
@@ -574,12 +574,12 @@ async function carregarUltimasAlocacoes() {
 function atualizarUltimasAlocacoes(alocacoes) {
     const container = document.getElementById('ultimas-alocacoes');
     container.innerHTML = '';
-    
+
     if (alocacoes.length === 0) {
         container.innerHTML = '<p class="text-muted text-center">Nenhuma alocação recente</p>';
         return;
     }
-    
+
     alocacoes.forEach(alocacao => {
         const item = document.createElement('div');
         item.className = 'border-bottom pb-2 mb-2';
@@ -608,4 +608,3 @@ function limparFormulario() {
 }
 </script>
 {% endblock %}
-

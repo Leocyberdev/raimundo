@@ -29,23 +29,25 @@
                             <!-- Categorias serão carregadas dinamicamente -->
                         </select>
                     </div>
-                    
+
                     <div class="col-md-4 mb-3">
                         <label for="filtro-fornecedor" class="form-label">Fornecedor</label>
-                        <input type="text" class="form-control" id="filtro-fornecedor" 
-                               placeholder="Digite o fornecedor">
+                        <div class="search-container">
+                            <input type="text" class="form-control" id="filtroFornecedor" placeholder="Filtrar por fornecedor" autocomplete="off">
+                            <div class="search-results" id="fornecedoresResults"></div>
+                        </div>
                     </div>
-                    
+
                     <div class="col-md-4 mb-3">
                         <label for="busca-produto" class="form-label">Busca Inteligente</label>
                         <div class="search-container">
-                            <input type="text" class="form-control" id="busca-produto" 
+                            <input type="text" class="form-control" id="busca-produto"
                                    placeholder="Digite código ou nome do produto">
                             <div class="search-results" id="search-results"></div>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-12">
                         <button type="button" class="btn btn-primary" onclick="aplicarFiltros()">
@@ -134,7 +136,7 @@
                         </tbody>
                     </table>
                 </div>
-                
+
                 <!-- Paginação -->
                 <nav aria-label="Paginação">
                     <ul class="pagination justify-content-center" id="paginacao">
@@ -181,20 +183,21 @@ document.addEventListener('DOMContentLoaded', function() {
     carregarProdutos();
     carregarCategorias();
     configurarBuscaInteligente();
+    configurarBuscaFornecedor();
 });
 
 async function carregarCategorias() {
     try {
         const response = await fetch('/api/categorias');
         const categorias = await response.json();
-        
+
         if (response.ok) {
             const select = document.getElementById('filtro-categoria');
             // Limpar opções existentes (exceto a primeira)
             while (select.children.length > 1) {
                 select.removeChild(select.lastChild);
             }
-            
+
             // Adicionar categorias ativas
             categorias.filter(cat => cat.ativa).forEach(categoria => {
                 const option = document.createElement('option');
@@ -212,7 +215,7 @@ async function carregarProdutos() {
     try {
         const response = await fetch('/api/produtos');
         const produtos = await response.json();
-        
+
         if (response.ok) {
             produtosCarregados = produtos;
             aplicarFiltros();
@@ -227,20 +230,20 @@ async function carregarProdutos() {
 
 function aplicarFiltros() {
     const categoria = document.getElementById('filtro-categoria').value;
-    const fornecedor = document.getElementById('filtro-fornecedor').value.toLowerCase();
+    const fornecedor = document.getElementById('filtroFornecedor').value.toLowerCase(); // Alterado para ler do novo input
     const busca = document.getElementById('busca-produto').value.toLowerCase();
-    
+
     let produtosFiltrados = produtosCarregados.filter(produto => {
         const matchCategoria = !categoria || produto.categoria.toLowerCase().includes(categoria.toLowerCase());
         const matchFornecedor = !fornecedor || produto.fornecedor.toLowerCase().includes(fornecedor);
-        const matchBusca = !busca || 
+        const matchBusca = !busca ||
             produto.nome.toLowerCase().includes(busca) ||
             produto.codigo.toLowerCase().includes(busca) ||
             produto.descricao.toLowerCase().includes(busca);
-        
+
         return matchCategoria && matchFornecedor && matchBusca;
     });
-    
+
     atualizarTabela(produtosFiltrados);
     atualizarContador(produtosFiltrados.length);
 }
@@ -248,25 +251,25 @@ function aplicarFiltros() {
 function atualizarTabela(produtos) {
     const tbody = document.getElementById('tabela-produtos');
     tbody.innerHTML = '';
-    
+
     if (produtos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" class="text-center">Nenhum produto encontrado</td></tr>';
         return;
     }
-    
+
     // Paginação
     const inicio = (paginaAtual - 1) * itensPorPagina;
     const fim = inicio + itensPorPagina;
     const produtosPagina = produtos.slice(inicio, fim);
-    
+
     produtosPagina.forEach(produto => {
         const tr = document.createElement('tr');
-        
+
         let badgeCategoria = 'bg-primary';
         if (produto.categoria.toLowerCase().includes('a')) badgeCategoria = 'bg-danger';
         else if (produto.categoria.toLowerCase().includes('b')) badgeCategoria = 'bg-warning';
         else if (produto.categoria.toLowerCase().includes('c')) badgeCategoria = 'bg-success';
-        
+
         let statusEstoque = '';
         let badgeEstoque = '';
         if (produto.quantidade_estoque === 0) {
@@ -279,7 +282,7 @@ function atualizarTabela(produtos) {
             statusEstoque = 'Normal';
             badgeEstoque = 'bg-success';
         }
-        
+
         tr.innerHTML = `
             <td><strong>${produto.codigo}</strong></td>
             <td>${produto.nome}</td>
@@ -294,16 +297,20 @@ function atualizarTabela(produtos) {
                 <button class="btn btn-sm btn-outline-primary" onclick="verDetalhes(${produto.id})">
                     <i class="bi bi-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-success" onclick="alocarProduto(${produto.id})" 
-                        ${produto.quantidade_estoque === 0 ? 'disabled' : ''}>
-                    <i class="bi bi-arrow-right-circle"></i>
-                </button>
+                ${produto.quantidade_estoque > 0 ?
+                    `<button class="btn btn-sm btn-outline-success" onclick="alocarProduto(${produto.id})" title="Alocar Produto">
+                        <i class="bi bi-arrow-right-circle"></i>
+                    </button>` :
+                    `<button class="btn btn-sm btn-secondary" onclick="showAlert('Produto sem estoque para alocação', 'warning')" title="Sem estoque">
+                        <i class="bi bi-arrow-right-circle"></i>
+                    </button>`
+                }
             </td>
         `;
-        
+
         tbody.appendChild(tr);
     });
-    
+
     criarPaginacao(produtos.length);
 }
 
@@ -312,7 +319,7 @@ function atualizarResumo(produtos) {
     const comEstoque = produtos.filter(p => p.quantidade_estoque > 0).length;
     const baixoEstoque = produtos.filter(p => p.quantidade_estoque > 0 && p.quantidade_estoque <= 10).length;
     const zerado = produtos.filter(p => p.quantidade_estoque === 0).length;
-    
+
     document.getElementById('total-produtos').textContent = total;
     document.getElementById('produtos-estoque').textContent = comEstoque;
     document.getElementById('produtos-baixo').textContent = baixoEstoque;
@@ -327,15 +334,15 @@ function criarPaginacao(totalItens) {
     const totalPaginas = Math.ceil(totalItens / itensPorPagina);
     const paginacao = document.getElementById('paginacao');
     paginacao.innerHTML = '';
-    
+
     if (totalPaginas <= 1) return;
-    
+
     // Botão anterior
     const anterior = document.createElement('li');
     anterior.className = `page-item ${paginaAtual === 1 ? 'disabled' : ''}`;
     anterior.innerHTML = '<a class="page-link" href="#" onclick="mudarPagina(' + (paginaAtual - 1) + ')">Anterior</a>';
     paginacao.appendChild(anterior);
-    
+
     // Números das páginas
     for (let i = 1; i <= totalPaginas; i++) {
         const item = document.createElement('li');
@@ -343,7 +350,7 @@ function criarPaginacao(totalItens) {
         item.innerHTML = `<a class="page-link" href="#" onclick="mudarPagina(${i})">${i}</a>`;
         paginacao.appendChild(item);
     }
-    
+
     // Botão próximo
     const proximo = document.createElement('li');
     proximo.className = `page-item ${paginaAtual === totalPaginas ? 'disabled' : ''}`;
@@ -359,19 +366,19 @@ function mudarPagina(pagina) {
 function configurarBuscaInteligente() {
     const input = document.getElementById('busca-produto');
     const results = document.getElementById('search-results');
-    
+
     input.addEventListener('input', async function() {
         const termo = this.value.trim();
-        
+
         if (termo.length < 2) {
             results.style.display = 'none';
             return;
         }
-        
+
         try {
             const response = await fetch(`/api/busca/produtos?q=${encodeURIComponent(termo)}`);
             const produtos = await response.json();
-            
+
             if (response.ok) {
                 mostrarResultadosBusca(produtos);
             }
@@ -379,7 +386,7 @@ function configurarBuscaInteligente() {
             console.error('Erro na busca:', error);
         }
     });
-    
+
     // Fechar resultados ao clicar fora
     document.addEventListener('click', function(e) {
         if (!input.contains(e.target) && !results.contains(e.target)) {
@@ -391,7 +398,7 @@ function configurarBuscaInteligente() {
 function mostrarResultadosBusca(produtos) {
     const results = document.getElementById('search-results');
     results.innerHTML = '';
-    
+
     if (produtos.length === 0) {
         results.innerHTML = '<div class="search-item">Nenhum produto encontrado</div>';
     } else {
@@ -410,16 +417,16 @@ function mostrarResultadosBusca(produtos) {
             results.appendChild(item);
         });
     }
-    
+
     results.style.display = 'block';
 }
 
 function verDetalhes(produtoId) {
     const produto = produtosCarregados.find(p => p.id === produtoId);
     if (!produto) return;
-    
+
     produtoSelecionado = produto;
-    
+
     const modalBody = document.getElementById('modal-detalhes-body');
     modalBody.innerHTML = `
         <div class="row">
@@ -445,7 +452,7 @@ function verDetalhes(produtoId) {
         </div>
         ${produto.descricao ? `<div class="mt-3"><h6>Descrição</h6><p>${produto.descricao}</p></div>` : ''}
     `;
-    
+
     new bootstrap.Modal(document.getElementById('modalDetalhes')).show();
 }
 
@@ -462,9 +469,10 @@ function irParaAlocacao() {
 
 function limparFiltros() {
     document.getElementById('filtro-categoria').value = '';
-    document.getElementById('filtro-fornecedor').value = '';
+    document.getElementById('filtroFornecedor').value = ''; // Limpar o novo input de fornecedor
     document.getElementById('busca-produto').value = '';
     document.getElementById('search-results').style.display = 'none';
+    document.getElementById('fornecedoresResults').style.display = 'none'; // Esconder resultados de fornecedor
     paginaAtual = 1;
     aplicarFiltros();
 }
@@ -474,6 +482,69 @@ function exportarEstoque() {
     window.location.href = '/api/estoque/exportar';
     showAlert('Exportação iniciada! O download será iniciado automaticamente.', 'success');
 }
+
+// Configuração do autocomplete para fornecedores
+function configurarBuscaFornecedor() {
+    let timeoutFornecedor;
+    const inputFornecedor = document.getElementById('filtroFornecedor');
+    const resultsDiv = document.getElementById('fornecedoresResults');
+
+    inputFornecedor.addEventListener('input', function() {
+        const termo = this.value.trim();
+
+        clearTimeout(timeoutFornecedor);
+
+        if (termo.length < 2) {
+            resultsDiv.style.display = 'none';
+            return;
+        }
+
+        timeoutFornecedor = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/fornecedores/busca?q=${encodeURIComponent(termo)}`);
+                const fornecedores = await response.json();
+
+                resultsDiv.innerHTML = ''; // Limpa resultados anteriores
+                if (fornecedores.length > 0) {
+                    fornecedores.forEach(fornecedor => {
+                        const item = document.createElement('div');
+                        item.className = 'search-item';
+                        item.innerHTML = `
+                            <strong>${fornecedor.nome}</strong>
+                            ${fornecedor.cnpj ? `<br><small class="text-muted">${fornecedor.cnpj}</small>` : ''}
+                        `;
+                        item.onclick = function() {
+                            selecionarFornecedor(fornecedor.nome);
+                        };
+                        resultsDiv.appendChild(item);
+                    });
+                    resultsDiv.style.display = 'block';
+                } else {
+                    resultsDiv.innerHTML = '<div class="search-item text-muted">Nenhum fornecedor encontrado</div>';
+                    resultsDiv.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Erro ao buscar fornecedores:', error);
+                resultsDiv.style.display = 'none';
+            }
+        }, 300);
+    });
+
+    // Fechar resultados ao clicar fora do input ou da área de resultados
+    document.addEventListener('click', function(e) {
+        if (!inputFornecedor.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+}
+
+function selecionarFornecedor(nome) {
+    document.getElementById('filtroFornecedor').value = nome;
+    document.getElementById('fornecedoresResults').style.display = 'none';
+    aplicarFiltros(); // Chama aplicarFiltros após selecionar o fornecedor
+}
+
 
 // Aplicar filtros quando Enter for pressionado
 document.getElementById('filtro-fornecedor').addEventListener('keypress', function(e) {
@@ -488,6 +559,30 @@ document.getElementById('busca-produto').addEventListener('keypress', function(e
         aplicarFiltros();
     }
 });
+
+// Helper para formatar moeda (exemplo)
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+// Helper para formatar datas (exemplo)
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+}
+
+// Helper para mostrar alertas (exemplo, assumindo que você tem uma função para isso)
+function showAlert(message, type) {
+    const alertPlaceholder = document.createElement('div');
+    alertPlaceholder.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.getElementById('content').prepend(alertPlaceholder); // Adiciona no topo do conteúdo
+}
+
 </script>
 {% endblock %}
-

@@ -4,6 +4,7 @@ from src.models.almoxarifado import (
     Produto, Categoria, Fornecedor,
     Movimentacao, Obra, Local, db
 )
+from src.routes.user import login_required
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, and_
 
@@ -15,6 +16,7 @@ ADMIN_PASSWORD = "Monter"
 # ===== ROTAS PARA PÁGINAS =====
 
 @almoxarifado_bp.route('/')
+@login_required
 def dashboard():
     """Dashboard principal"""
     return render_template('dashboard.html')
@@ -476,6 +478,57 @@ def economia_total():
             'economia_total': float(economia_total),
             'economia_mensal': list(reversed(economia_mensal))
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# APIs para busca de locais
+@almoxarifado_bp.route('/api/locais/busca')
+def busca_locais():
+    """Busca locais por termo"""
+    try:
+        termo = request.args.get('q', '').strip()
+        if len(termo) < 1:
+            return jsonify([])
+
+        from src.models.almoxarifado import Local
+        locais = Local.query.filter(
+            db.or_(
+                Local.nome_local.ilike(f'%{termo}%'),
+                Local.posicao.ilike(f'%{termo}%')
+            )
+        ).limit(10).all()
+
+        return jsonify([{
+            'id': local.id,
+            'nome_local': local.nome_local,
+            'posicao': local.posicao,
+            'descricao': local.descricao,
+            'texto_completo': f"{local.nome_local} - {local.posicao}"
+        } for local in locais])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/fornecedores/busca')
+def busca_fornecedores():
+    """Busca fornecedores por termo"""
+    try:
+        termo = request.args.get('q', '').strip()
+        if len(termo) < 2:
+            return jsonify([])
+
+        fornecedores = Fornecedor.query.filter(
+            and_(
+                Fornecedor.ativo == True,
+                Fornecedor.nome.ilike(f'%{termo}%')
+            )
+        ).limit(10).all()
+
+        return jsonify([{
+            'id': fornecedor.id,
+            'nome': fornecedor.nome,
+            'cnpj': fornecedor.cnpj,
+            'contato': fornecedor.contato
+        } for fornecedor in fornecedores])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
