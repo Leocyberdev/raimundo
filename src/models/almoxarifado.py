@@ -187,6 +187,13 @@ class Movimentacao(db.Model):
         return f'<Movimentacao {self.tipo_movimentacao} - {self.quantidade}>'
 
     def to_dict(self):
+        produto_dict = None
+        if self.produto:
+            produto_dict = self.produto.to_dict()
+            # Garantir que unidade_medida esteja sempre presente
+            if 'unidade_medida' not in produto_dict or not produto_dict['unidade_medida']:
+                produto_dict['unidade_medida'] = 'unidade'
+
         return {
             'id': self.id,
             'produto_id': self.produto_id,
@@ -198,8 +205,7 @@ class Movimentacao(db.Model):
             'valor_total': self.valor_total,
             'data_movimentacao': self.data_movimentacao.isoformat() if self.data_movimentacao else None,
             'observacoes': self.observacoes,
-            # Dados relacionados
-            'produto': self.produto.to_dict() if self.produto else None,
+            'produto': produto_dict,
             'obra': self.obra.to_dict() if self.obra else None,
             'funcionario': self.funcionario.to_dict() if self.funcionario else None
         }

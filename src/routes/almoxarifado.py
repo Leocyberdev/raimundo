@@ -425,7 +425,16 @@ def historico_movimentacoes():
 
         movimentacoes = query.order_by(desc(Movimentacao.data_movimentacao)).limit(50).all()
 
-        return jsonify([mov.to_dict() for mov in movimentacoes])
+        # Incluir informações completas do produto incluindo unidade_medida
+        resultado = []
+        for mov in movimentacoes:
+            mov_dict = mov.to_dict()
+            # Garantir que as informações do produto incluam unidade_medida
+            if mov.produto:
+                mov_dict['produto']['unidade_medida'] = mov.produto.unidade_medida
+            resultado.append(mov_dict)
+
+        return jsonify(resultado)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

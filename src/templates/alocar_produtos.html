@@ -364,7 +364,7 @@ async function carregarFuncionarios() {
         // Carregar usuário logado primeiro
         const userResponse = await fetch('/api/usuario-logado');
         const userData = await userResponse.json();
-        
+
         // Carregar funcionários cadastrados
         const response = await fetch('/api/funcionarios');
         const data = await response.json();
@@ -384,7 +384,7 @@ async function carregarFuncionarios() {
         // Adicionar funcionários cadastrados como opções adicionais
         if (response.ok && data.length > 0) {
             funcionarios = data;
-            
+
             // Adicionar separador visual
             const separatorOption = document.createElement('option');
             separatorOption.disabled = true;
@@ -404,11 +404,11 @@ async function carregarFuncionarios() {
 
         // Atualizar resumo já com o usuário selecionado
         atualizarResumo();
-        
+
     } catch (error) {
         console.error('Erro ao carregar funcionários:', error);
         showAlert('Erro ao carregar funcionários: ' + error.message, 'danger');
-        
+
         // Em caso de erro, pelo menos tentar carregar um funcionário padrão
         const select = document.getElementById('funcionario-select');
         select.innerHTML = '<option value="user_1" selected>Usuário do Sistema</option>';
@@ -458,11 +458,11 @@ function configurarBuscaInteligente() {
             try {
                 console.log('Buscando produtos com termo:', termo);
                 const response = await fetch(`/api/busca/produtos?q=${encodeURIComponent(termo)}`);
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const produtos = await response.json();
                 console.log('Produtos encontrados:', produtos);
                 mostrarResultadosBusca(produtos);
@@ -544,7 +544,7 @@ function mostrarResultadosBusca(produtos) {
         item.style.transition = 'background-color 0.2s ease';
 
         const estoque = produto.quantidade_estoque || produto.estoque || 0;
-        
+
         let statusEstoque;
         let statusClass = '';
         if (estoque === 0) {
@@ -584,7 +584,7 @@ function mostrarResultadosBusca(produtos) {
             this.style.backgroundColor = '#e3f2fd';
             this.style.transform = 'translateX(2px)';
         });
-        
+
         item.addEventListener('mouseleave', function() {
             this.classList.remove('selected');
             this.style.backgroundColor = 'white';
@@ -596,7 +596,7 @@ function mostrarResultadosBusca(produtos) {
             selecionarProduto(produto);
             document.getElementById('busca-produto').value = `${produto.codigo} - ${produto.nome}`;
             results.style.display = 'none';
-            
+
             // Feedback visual
             showAlert(`Produto "${produto.nome}" selecionado com sucesso!`, 'success');
         });
@@ -605,7 +605,7 @@ function mostrarResultadosBusca(produtos) {
     });
 
     results.style.display = 'block';
-    
+
     // Auto-selecionar primeiro item se houver apenas um resultado exato
     if (produtosAtivos.length === 1) {
         const searchTerm = document.getElementById('busca-produto').value.trim();
@@ -630,16 +630,16 @@ function selecionarProduto(produto) {
     document.getElementById('produto-nome').textContent = produto.nome || '-';
     document.getElementById('produto-categoria').textContent = produto.categoria || '-';
     document.getElementById('produto-local').textContent = produto.local_produto || produto.local || '-';
-    
+
     const estoque = produto.quantidade_estoque || produto.estoque || 0;
     const unidadeMedida = produto.unidade_medida || 'unidade';
     const isAtivo = produto.ativo !== false;
-    
+
     console.log('Unidade de medida detectada:', unidadeMedida);
-    
+
     // Configurar exibição da unidade de medida
     const unidadeFormatada = formatarUnidadeMedida(unidadeMedida);
-    
+
     document.getElementById('produto-estoque').textContent = estoque;
     document.getElementById('produto-unidade-estoque').textContent = unidadeFormatada.sufixo;
     document.getElementById('produto-unidade').textContent = unidadeFormatada.nome;
@@ -668,7 +668,7 @@ function selecionarProduto(produto) {
         document.getElementById('dados-alocacao').style.display = 'block';
         calcularValorTotal();
         atualizarResumo();
-        
+
         // Mostrar alerta informativo sobre a unidade
         showAlert(`Produto selecionado: ${produto.nome} (unidade: ${unidadeFormatada.nome})`, 'info');
     } else {
@@ -713,7 +713,7 @@ function atualizarResumo() {
     const funcionarioSelect = document.getElementById('funcionario-select').value;
 
     const obra = obras.find(o => o.id == obraId);
-    
+
     // Determinar nome do funcionário
     let nomeFuncionario = '';
     if (funcionarioSelect) {
@@ -751,21 +751,21 @@ function mostrarModalConfirmacao() {
 
     const quantidade = parseInt(document.getElementById('quantidade').value);
     const obraId = document.getElementById('obra-select').value;
-    const funcionarioId = document.getElementById('funcionario-select').value;
+    const funcionarioSelect = document.getElementById('funcionario-select').value;
     const observacoes = document.getElementById('observacoes').value;
 
     const obra = obras.find(o => o.id == obraId);
-    
+
     // Determinar nome do funcionário para a modal
     let nomeFuncionarioModal = '';
-    if (funcionarioId.toString().startsWith('user_')) {
-        const option = document.querySelector(`option[value="${funcionarioId}"]`);
+    if (funcionarioSelect.startsWith('user_')) {
+        const option = document.querySelector(`option[value="${funcionarioSelect}"]`);
         nomeFuncionarioModal = option ? option.textContent : 'Usuário Logado';
     } else {
-        const funcionario = funcionarios.find(f => f.id == funcionarioId);
+        const funcionario = funcionarios.find(f => f.id == funcionarioSelect);
         nomeFuncionarioModal = funcionario ? funcionario.nome : 'Funcionário não identificado';
     }
-    
+
     const valorTotal = quantidade * produtoSelecionado.preco;
 
     const modalBody = document.getElementById('modal-confirmacao-body');
@@ -913,7 +913,7 @@ function atualizarUltimasAlocacoes(alocacoes) {
     alocacoes.forEach(alocacao => {
         const item = document.createElement('div');
         item.className = 'border-bottom pb-2 mb-2';
-        
+
         // Extrair data e hora da movimentação
         const dataMovimentacao = new Date(alocacao.data_movimentacao);
         const dataFormatada = dataMovimentacao.toLocaleDateString('pt-BR');
@@ -921,7 +921,12 @@ function atualizarUltimasAlocacoes(alocacoes) {
             hour: '2-digit', 
             minute: '2-digit' 
         });
-        
+
+        // Obter unidade de medida do produto ou usar 'unidade' como padrão
+        const unidadeMedida = alocacao.produto ? alocacao.produto.unidade_medida || 'unidade' : 'unidade';
+        const unidadeFormatada = formatarUnidadeMedida(unidadeMedida);
+        const quantidadeFormatada = formatarQuantidade(alocacao.quantidade, unidadeMedida);
+
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-start">
                 <div style="flex: 1; min-width: 0;">
@@ -934,7 +939,7 @@ function atualizarUltimasAlocacoes(alocacoes) {
                 </div>
             </div>
             <div class="text-muted small mt-1">
-                <i class="bi bi-box-arrow-right"></i> ${alocacao.quantidade} unidades → ${alocacao.obra ? alocacao.obra.numero_obra : 'N/A'}<br>
+                <i class="bi bi-box-arrow-right"></i> ${quantidadeFormatada} → ${alocacao.obra ? alocacao.obra.numero_obra : 'N/A'}<br>
                 <i class="bi bi-currency-dollar"></i> ${formatCurrency(alocacao.valor_total)}
             </div>
         `;
@@ -949,17 +954,17 @@ function limparFormulario() {
     document.getElementById('produto-selecionado').style.display = 'none';
     document.getElementById('dados-alocacao').style.display = 'none';
     document.getElementById('resumo-alocacao').innerHTML = '<p class="text-muted text-center">Selecione um produto para ver o resumo</p>';
-    
+
     // Resetar campos de unidade para padrão
     document.getElementById('label-unidade-quantidade').textContent = '(em unidades)';
     document.getElementById('max-unidade').textContent = 'un';
     document.getElementById('sufixo-unidade').textContent = 'un';
-    
+
     const quantidadeInput = document.getElementById('quantidade');
     quantidadeInput.step = '1';
     quantidadeInput.min = '1';
     quantidadeInput.placeholder = 'Ex: 1un';
-    
+
     produtoSelecionado = null;
 }
 
@@ -1016,13 +1021,13 @@ function formatarUnidadeMedida(unidade) {
             descricao: 'Volume em litros'
         }
     };
-    
+
     return unidades[unidade] || unidades['unidade'];
 }
 
 function formatarQuantidade(quantidade, unidade) {
     const config = formatarUnidadeMedida(unidade);
-    
+
     if (unidade === 'unidade' || unidade === 'pacote') {
         return `${Math.floor(quantidade)} ${config.sufixo}`;
     } else {
@@ -1045,9 +1050,9 @@ function showAlert(message, type = 'info') {
         'info': 'info',
         'danger': 'danger'
     };
-    
+
     const alertType = typeMap[type] || 'info';
-    
+
     // Criar container de alertas se não existir
     let alertContainer = document.getElementById('alert-container');
     if (!alertContainer) {
