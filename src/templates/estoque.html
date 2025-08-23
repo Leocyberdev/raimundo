@@ -323,12 +323,25 @@ async function carregarCategorias() {
 
 async function carregarProdutos() {
     try {
-        const response = await fetch('/api/produtos');
+        // Construir URL com parâmetros de filtro
+        const categoria = document.getElementById('filtro-categoria').value;
+        const fornecedor = document.getElementById('filtroFornecedor').value;
+        const busca = document.getElementById('busca-produto').value;
+        const status = document.getElementById('filtro-status').value;
+
+        const params = new URLSearchParams();
+        if (categoria) params.append('categoria', categoria);
+        if (fornecedor) params.append('fornecedor', fornecedor);
+        if (busca) params.append('busca', busca);
+        if (status) params.append('status', status);
+
+        const url = '/api/produtos' + (params.toString() ? '?' + params.toString() : '');
+        const response = await fetch(url);
         const produtos = await response.json();
 
         if (response.ok) {
             produtosCarregados = produtos;
-            aplicarFiltros();
+            atualizarTabela(produtos);
             atualizarResumo(produtos);
         } else {
             showAlert('Erro ao carregar produtos: ' + produtos.error, 'danger');
@@ -339,30 +352,17 @@ async function carregarProdutos() {
 }
 
 function aplicarFiltros() {
-    const categoria = document.getElementById('filtro-categoria').value;
-    const fornecedor = document.getElementById('filtroFornecedor').value.toLowerCase(); // Alterado para ler do novo input
-    const busca = document.getElementById('busca-produto').value.toLowerCase();
-    const status = document.getElementById('filtro-status').value;
-
-    let produtosFiltrados = produtosCarregados.filter(produto => {
-        const matchCategoria = !categoria || produto.categoria.toLowerCase().includes(categoria.toLowerCase());
-        const matchFornecedor = !fornecedor || produto.fornecedor.toLowerCase().includes(fornecedor);
-        const matchBusca = !busca ||
-            produto.nome.toLowerCase().includes(busca) ||
-            produto.codigo.toLowerCase().includes(busca) ||
-            produto.descricao.toLowerCase().includes(busca);
-        const matchStatus = status === '' || (status === 'ativo' && produto.ativo) || (status === 'inativo' && !produto.ativo);
-
-        return matchCategoria && matchFornecedor && matchBusca && matchStatus;
-    });
-
-    atualizarTabela(produtosFiltrados);
-    atualizarContador(produtosFiltrados.length);
+    // Agora aplicarFiltros apenas chama carregarProdutos que faz a filtragem no servidor
+    paginaAtual = 1; // Reset da paginação
+    carregarProdutos();
 }
 
 function atualizarTabela(produtos) {
     const tbody = document.getElementById('tabela-produtos');
     tbody.innerHTML = '';
+
+    // Atualizar contador
+    atualizarContador(produtos.length);
 
     if (produtos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" class="text-center">Nenhum produto encontrado</td></tr>';
@@ -654,21 +654,21 @@ function configurarBuscaFornecedor() {
 function selecionarFornecedor(nome) {
     document.getElementById('filtroFornecedor').value = nome;
     document.getElementById('fornecedoresResults').style.display = 'none';
-    aplicarFiltros(); // Chama aplicarFiltros após selecionar o fornecedor
+    carregarProdutos(); // Chama carregarProdutos diretamente
 }
 
 
 // Aplicar filtros quando Enter for pressionado
-document.getElementById('filtro-fornecedor').addEventListener('keypress', function(e) {
+document.getElementById('filtroFornecedor').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
-        aplicarFiltros();
+        carregarProdutos();
     }
 });
 
 document.getElementById('busca-produto').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         document.getElementById('search-results').style.display = 'none';
-        aplicarFiltros();
+        carregarProdutos();
     }
 });
 

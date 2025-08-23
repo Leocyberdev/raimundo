@@ -111,8 +111,19 @@ def listar_produtos():
         categoria = request.args.get('categoria')
         fornecedor = request.args.get('fornecedor')
         busca = request.args.get('busca')
+        status = request.args.get('status')
 
-        query = Produto.query.filter(Produto.ativo == True)
+        # Base query - se status não especificado, mostra apenas ativos (comportamento padrão)
+        if status == 'inativo':
+            query = Produto.query.filter(Produto.ativo == False)
+        elif status == 'ativo':
+            query = Produto.query.filter(Produto.ativo == True)
+        elif status == '':
+            # Quando status vazio, mostrar todos (ativo e inativo)
+            query = Produto.query
+        else:
+            # Comportamento padrão - apenas ativos
+            query = Produto.query.filter(Produto.ativo == True)
 
         if categoria:
             query = query.filter(Produto.categoria.ilike(f'%{categoria}%'))
