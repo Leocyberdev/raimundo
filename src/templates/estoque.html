@@ -643,54 +643,66 @@ let produtoEdicao = null;
 
 // Função para editar produto
 async function editarProduto(produtoId) {
-    console.log('Editando produto:', produtoId);
+    console.log('Iniciando edição do produto:', produtoId);
     
-    const produto = produtosCarregados.find(p => p.id === produtoId);
-    if (!produto) {
-        showAlert('Produto não encontrado', 'error');
-        return;
-    }
-
-    produtoEdicao = produto;
-
     try {
-        // Carregar categorias no select de edição PRIMEIRO
+        const produto = produtosCarregados.find(p => p.id === produtoId);
+        if (!produto) {
+            showAlert('Produto não encontrado', 'error');
+            return;
+        }
+
+        produtoEdicao = produto;
+
+        // Carregar categorias primeiro
         await carregarCategoriasEdicao();
         
-        // Aguardar um breve momento para garantir que os elementos estão prontos
-        setTimeout(() => {
-            // Preencher formulário de edição
-            const editNome = document.getElementById('edit-nome');
-            const editDescricao = document.getElementById('edit-descricao');
-            const editFornecedor = document.getElementById('edit-fornecedor');
-            const editLocal = document.getElementById('edit-local');
-            const editPreco = document.getElementById('edit-preco');
-            const editStatus = document.getElementById('edit-status');
-            const editSenha = document.getElementById('edit-senha');
-            
-            if (editNome) editNome.value = produto.nome || '';
-            if (editDescricao) editDescricao.value = produto.descricao || '';
-            if (editFornecedor) editFornecedor.value = produto.fornecedor || '';
-            if (editLocal) editLocal.value = produto.local_produto || '';
-            if (editPreco) editPreco.value = produto.preco || 0;
-            if (editStatus) editStatus.value = produto.ativo ? 'true' : 'false';
-            if (editSenha) editSenha.value = '';
-
-            // Mostrar modal
-            const modalElement = document.getElementById('modalEdicao');
-            if (modalElement) {
-                const modal = new bootstrap.Modal(modalElement);
-                modal.show();
-            } else {
-                console.error('Modal de edição não encontrado');
-                showAlert('Erro: Modal de edição não encontrado', 'error');
-            }
-        }, 100);
+        // Preencher os campos do formulário
+        preencherFormularioEdicao(produto);
+        
+        // Exibir o modal
+        const modalElement = document.getElementById('modalEdicao');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        } else {
+            throw new Error('Modal de edição não encontrado no DOM');
+        }
         
     } catch (error) {
-        console.error('Erro ao abrir modal de edição:', error);
+        console.error('Erro ao editar produto:', error);
         showAlert('Erro ao abrir formulário de edição: ' + error.message, 'error');
     }
+}
+
+// Função auxiliar para preencher formulário
+function preencherFormularioEdicao(produto) {
+    const campos = {
+        'edit-nome': produto.nome || '',
+        'edit-descricao': produto.descricao || '',
+        'edit-fornecedor': produto.fornecedor || '',
+        'edit-local': produto.local_produto || '',
+        'edit-preco': produto.preco || 0,
+        'edit-status': produto.ativo ? 'true' : 'false',
+        'edit-senha': ''
+    };
+
+    Object.keys(campos).forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.value = campos[id];
+        } else {
+            console.warn(`Elemento ${id} não encontrado`);
+        }
+    });
+
+    // Selecionar categoria após carregar as opções
+    setTimeout(() => {
+        const selectCategoria = document.getElementById('edit-categoria');
+        if (selectCategoria && produto.categoria) {
+            selectCategoria.value = produto.categoria;
+        }
+    }, 100);
 }
 
 // Carregar categorias para o select de edição
@@ -699,34 +711,42 @@ async function carregarCategoriasEdicao() {
         const response = await fetch('/api/categorias');
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
         }
         
         const categorias = await response.json();
         const select = document.getElementById('edit-categoria');
         
         if (!select) {
-            console.error('Elemento edit-categoria não encontrado');
-            return;
+            throw new Error('Elemento select de categoria não encontrado');
         }
 
-        select.innerHTML = '<option value="">Selecione uma categoria...</option>';
+        // Limpar opções existentes
+        select.innerHTML = '';
+        
+        // Adicionar opção padrão
+        const optionDefault = document.createElement('option');
+        optionDefault.value = '';
+        optionDefault.textContent = 'Selecione uma categoria...';
+        select.appendChild(optionDefault);
 
-        if (categorias && categorias.length > 0) {
-            categorias.filter(cat => cat.ativa).forEach(categoria => {
-                const option = document.createElement('option');
-                option.value = categoria.nome;
-                option.textContent = categoria.nome;
-                
-                // Selecionar categoria atual do produto
-                if (produtoEdicao && categoria.nome === produtoEdicao.categoria) {
-                    option.selected = true;
-                }
-                
-                select.appendChild(option);
-            });
+        if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+            categorias
+                .filter(cat => cat.ativa)
+                .forEach(categoria => {
+                    const option = document.createElement('option');
+                    option.value = categoria.nome;
+                    option.textContent = categoria.nome;
+                    select.appendChild(option);
+                });
+            
+            console.log(`Carregadas ${categorias.length} categorias para edição`);
         } else {
-            select.innerHTML = '<option value="">Nenhuma categoria disponível</option>';
+            const optionEmpty = document.createElement('option');
+            optionEmpty.value = '';
+            optionEmpty.textContent = 'Nenhuma categoria disponível';
+            optionEmpty.disabled = true;
+            select.appendChild(optionEmpty);
         }
         
     } catch (error) {
@@ -735,22 +755,46 @@ async function carregarCategoriasEdicao() {
         if (select) {
             select.innerHTML = '<option value="">Erro ao carregar categorias</option>';
         }
+        throw error; // Re-lançar para que a função chamadora possa tratar
     }
 }
 
 // Salvar edição do produto
 async function salvarEdicao() {
-    if (!produtoEdicao) return;
+    if (!produtoEdicao) {
+        showAlert('Nenhum produto selecionado para edição', 'error');
+        return;
+    }
+
+    // Validar campos obrigatórios
+    const nome = document.getElementById('edit-nome').value.trim();
+    const categoria = document.getElementById('edit-categoria').value;
+    const senha = document.getElementById('edit-senha').value.trim();
+
+    if (!nome) {
+        showAlert('Nome do produto é obrigatório', 'warning');
+        return;
+    }
+
+    if (!categoria) {
+        showAlert('Categoria é obrigatória', 'warning');
+        return;
+    }
+
+    if (!senha) {
+        showAlert('Senha de administrador é obrigatória', 'warning');
+        return;
+    }
 
     const dados = {
-        nome: document.getElementById('edit-nome').value,
-        descricao: document.getElementById('edit-descricao').value,
-        categoria: document.getElementById('edit-categoria').value,
-        fornecedor: document.getElementById('edit-fornecedor').value,
-        local_produto: document.getElementById('edit-local').value,
-        preco: parseFloat(document.getElementById('edit-preco').value),
+        nome: nome,
+        descricao: document.getElementById('edit-descricao').value.trim(),
+        categoria: categoria,
+        fornecedor: document.getElementById('edit-fornecedor').value.trim(),
+        local_produto: document.getElementById('edit-local').value.trim(),
+        preco: parseFloat(document.getElementById('edit-preco').value) || 0,
         ativo: document.getElementById('edit-status').value === 'true',
-        senha: document.getElementById('edit-senha').value
+        senha: senha
     };
 
     try {
@@ -766,12 +810,23 @@ async function salvarEdicao() {
 
         if (response.ok) {
             showAlert('Produto atualizado com sucesso!', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('modalEdicao')).hide();
-            carregarProdutos(); // Recarregar lista
+            
+            // Fechar modal
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalEdicao'));
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+            
+            // Limpar dados de edição
+            produtoEdicao = null;
+            
+            // Recarregar lista de produtos
+            await carregarProdutos();
         } else {
-            showAlert('Erro: ' + result.error, 'danger');
+            showAlert('Erro ao salvar: ' + (result.error || 'Erro desconhecido'), 'danger');
         }
     } catch (error) {
+        console.error('Erro ao salvar edição:', error);
         showAlert('Erro de conexão: ' + error.message, 'danger');
     }
 }
