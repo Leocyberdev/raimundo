@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function carregarObras() {
     try {
-        const response = await fetch('/api/obras');
+        const response = await fetch('/api/obras?para_alocacao=true');
         const data = await response.json();
 
         if (response.ok) {

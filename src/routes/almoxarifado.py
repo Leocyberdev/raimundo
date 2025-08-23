@@ -286,8 +286,13 @@ def listar_obras():
     try:
         status = request.args.get("status")
         busca = request.args.get("busca")
+        para_alocacao = request.args.get("para_alocacao", "false").lower() == "true"
 
         query = Obra.query.filter_by(ativa=True)
+
+        # Se for para alocação, excluir obras entregues
+        if para_alocacao:
+            query = query.filter(Obra.status != 'Entregue')
 
         if busca:
             query = query.filter(
@@ -326,16 +331,18 @@ def sugestoes_obras():
         if not termo or len(termo) < 1:
             return jsonify([])
 
-        # Buscar obras que contenham o termo no nome ou número
+        # Buscar obras que contenham o termo no nome ou número, excluindo entregues
         obras = Obra.query.filter(
             db.and_(
                 Obra.ativa == True,
+                Obra.status != 'Entregue',
                 db.or_(
                     Obra.nome_obra.ilike(f"%{termo}%"),
                     Obra.numero_obra.ilike(f"%{termo}%")
                 )
             )
         ).order_by(Obra.numero_obra).limit(10).all()
+</old_str>
 
         sugestoes = []
         for obra in obras:
