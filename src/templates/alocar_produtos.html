@@ -873,14 +873,29 @@ function atualizarUltimasAlocacoes(alocacoes) {
     alocacoes.forEach(alocacao => {
         const item = document.createElement('div');
         item.className = 'border-bottom pb-2 mb-2';
+        
+        // Extrair data e hora da movimentação
+        const dataMovimentacao = new Date(alocacao.data_movimentacao);
+        const dataFormatada = dataMovimentacao.toLocaleDateString('pt-BR');
+        const horaFormatada = dataMovimentacao.toLocaleTimeString('pt-BR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
         item.innerHTML = `
-            <div class="d-flex justify-content-between">
-                <small><strong>${alocacao.produto ? alocacao.produto.codigo : 'N/A'}</strong></small>
-                <small class="text-muted">${formatDate(alocacao.data_movimentacao)}</small>
+            <div class="d-flex justify-content-between align-items-start">
+                <div style="flex: 1; min-width: 0;">
+                    <div class="fw-bold text-primary small">${alocacao.produto ? alocacao.produto.nome : 'Produto N/A'}</div>
+                    <div class="text-muted small">Código: ${alocacao.produto ? alocacao.produto.codigo : 'N/A'}</div>
+                </div>
+                <div class="text-end text-muted small ms-2">
+                    <div>${dataFormatada}</div>
+                    <div><strong>${horaFormatada}</strong></div>
+                </div>
             </div>
-            <div class="text-muted small">
-                ${alocacao.quantidade} unidades → ${alocacao.obra ? alocacao.obra.numero_obra : 'N/A'}<br>
-                ${formatCurrency(alocacao.valor_total)}
+            <div class="text-muted small mt-1">
+                <i class="bi bi-box-arrow-right"></i> ${alocacao.quantidade} unidades → ${alocacao.obra ? alocacao.obra.numero_obra : 'N/A'}<br>
+                <i class="bi bi-currency-dollar"></i> ${formatCurrency(alocacao.valor_total)}
             </div>
         `;
         container.appendChild(item);
