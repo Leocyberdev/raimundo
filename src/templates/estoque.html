@@ -159,7 +159,7 @@
                                 <th>Fornecedor</th>
                                 <th>Local</th>
                                 <th>Preço</th>
-                                <th>Estoque</th>
+                                <th>Estoque/Unidade</th>
                                 <th>Status</th>
                                 <th>Ações</th>
                             </tr>
@@ -453,7 +453,7 @@ function atualizarTabela(produtos) {
             <td>${produto.fornecedor || '-'}</td>
             <td>${produto.local_produto || '-'}</td>
             <td>${formatCurrency(produto.preco)}</td>
-            <td><strong>${produto.quantidade_estoque}</strong></td>
+            <td><strong>${produto.quantidade_estoque}</strong> <small class="text-muted">${produto.unidade_medida || 'unidade'}</small></td>
             <td><span class="badge ${badgeStatus}">${statusProduto}</span></td>
             <td>
                 <button class="btn btn-sm btn-outline-primary" onclick="verDetalhes(${produto.id})">
@@ -614,7 +614,7 @@ function verDetalhes(produtoId) {
             <div class="col-md-6">
                 <h6>Estoque e Preços</h6>
                 <table class="table table-sm">
-                    <tr><td><strong>Quantidade:</strong></td><td><span class="badge bg-info">${produto.quantidade_estoque}</span></td></tr>
+                    <tr><td><strong>Quantidade:</strong></td><td><span class="badge bg-info">${produto.quantidade_estoque} ${produto.unidade_medida || 'unidade'}</span></td></tr>
                     <tr><td><strong>Preço:</strong></td><td>${formatCurrency(produto.preco)}</td></tr>
                     <tr><td><strong>Valor Total:</strong></td><td>${formatCurrency(produto.preco * produto.quantidade_estoque)}</td></tr>
                     <tr><td><strong>Cadastrado:</strong></td><td>${formatDate(produto.data_cadastro)}</td></tr>
