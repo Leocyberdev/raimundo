@@ -11,6 +11,10 @@ run = ["sh", "-c", "python undefined"]
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
 [workflows]
 runButton = "Executar Aplicação"
 
