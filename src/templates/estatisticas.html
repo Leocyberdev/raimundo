@@ -1,0 +1,565 @@
+{% extends "base.html" %}
+
+{% block title %}Estatísticas - Sistema de Almoxarifado{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="display-5 text-center mb-4">
+            <i class="bi bi-graph-up"></i> Estatísticas e Relatórios
+        </h1>
+    </div>
+</div>
+
+<!-- Cards de Economia -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="stats-card">
+            <div class="stats-number" id="economia-total">R$ 0,00</div>
+            <div class="stats-label">Economia Total</div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="stats-number" id="economia-mes">R$ 0,00</div>
+            <div class="stats-label">Economia do Mês</div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="stats-number" id="economia-media">R$ 0,00</div>
+            <div class="stats-label">Economia Média Mensal</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Gráfico de Produtos Mais Utilizados -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-bar-chart"></i> Top 10 Produtos Mais Utilizados (Últimos 30 dias)
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoProdutosMaisUsados" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ranking de Funcionários -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Ranking de Funcionários
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="ranking-funcionarios">
+                    <div class="loading">Carregando...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Gráfico de Economia Mensal -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up-arrow"></i> Evolução da Economia (Últimos 12 meses)
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoEconomiaMensal" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estatísticas Detalhadas -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-calculator"></i> Estatísticas Detalhadas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Movimentações</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Total de Alocações:</span>
+                        <strong id="total-alocacoes">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Produtos Diferentes:</span>
+                        <strong id="produtos-diferentes">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Obras Atendidas:</span>
+                        <strong id="obras-atendidas">0</strong>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Valores</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Maior Alocação:</span>
+                        <strong id="maior-alocacao">R$ 0,00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Média por Alocação:</span>
+                        <strong id="media-alocacao">R$ 0,00</strong>
+                    </div>
+                </div>
+                
+                <div>
+                    <h6>Período</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Primeira Movimentação:</span>
+                        <strong id="primeira-movimentacao">-</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Última Movimentação:</span>
+                        <strong id="ultima-movimentacao">-</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Análise por Categoria -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-pie-chart"></i> Economia por Categoria
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoCategoria" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Análise por Obra -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-building"></i> Top 5 Obras por Valor
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoObras" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Produtos Mais Valiosos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-gem"></i> Top 20 Produtos por Valor Economizado
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Posição</th>
+                                <th>Código</th>
+                                <th>Nome do Produto</th>
+                                <th>Categoria</th>
+                                <th>Quantidade Alocada</th>
+                                <th>Valor Total Economizado</th>
+                                <th>Valor Médio</th>
+                                <th>Última Alocação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-produtos-valiosos">
+                            <tr>
+                                <td colspan="8" class="text-center">Carregando dados...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let graficoProdutosMaisUsados, graficoEconomiaMensal, graficoCategoria, graficoObras;
+
+document.addEventListener('DOMContentLoaded', function() {
+    carregarEstatisticas();
+});
+
+async function carregarEstatisticas() {
+    try {
+        // Carregar dados de economia
+        const economiaResponse = await fetch('/api/estatisticas/economia-total');
+        const economiaData = await economiaResponse.json();
+        
+        // Carregar produtos mais usados
+        const produtosResponse = await fetch('/api/estatisticas/produtos-mais-usados');
+        const produtosData = await produtosResponse.json();
+        
+        // Carregar estatísticas de funcionários
+        const funcionariosResponse = await fetch('/api/estatisticas/funcionarios');
+        const funcionariosData = await funcionariosResponse.json();
+        
+        if (economiaResponse.ok && produtosResponse.ok && funcionariosResponse.ok) {
+            atualizarCardsEconomia(economiaData);
+            criarGraficoProdutosMaisUsados(produtosData);
+            criarGraficoEconomiaMensal(economiaData.economia_mensal);
+            atualizarRankingFuncionarios(funcionariosData);
+            criarGraficosAdicionais(produtosData);
+            atualizarEstatisticasDetalhadas(produtosData, economiaData);
+            atualizarTabelaProdutosValiosos(produtosData);
+        } else {
+            showAlert('Erro ao carregar estatísticas', 'danger');
+        }
+    } catch (error) {
+        showAlert('Erro de conexão: ' + error.message, 'danger');
+    }
+}
+
+function atualizarCardsEconomia(data) {
+    document.getElementById('economia-total').textContent = formatCurrency(data.economia_total);
+    
+    // Calcular economia do mês atual
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    const economiaMes = data.economia_mensal.find(m => m.mes === mesAtual);
+    document.getElementById('economia-mes').textContent = 
+        formatCurrency(economiaMes ? economiaMes.valor : 0);
+    
+    // Calcular média mensal
+    const totalMeses = data.economia_mensal.filter(m => m.valor > 0).length;
+    const media = totalMeses > 0 ? data.economia_total / totalMeses : 0;
+    document.getElementById('economia-media').textContent = formatCurrency(media);
+}
+
+function criarGraficoProdutosMaisUsados(produtos) {
+    const ctx = document.getElementById('graficoProdutosMaisUsados').getContext('2d');
+    
+    const labels = produtos.map(p => p.codigo);
+    const quantidades = produtos.map(p => p.quantidade);
+    const valores = produtos.map(p => p.valor);
+    
+    graficoProdutosMaisUsados = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Quantidade',
+                data: quantidades,
+                backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                borderColor: 'rgba(52, 152, 219, 1)',
+                borderWidth: 1,
+                yAxisID: 'y'
+            }, {
+                label: 'Valor (R$)',
+                data: valores,
+                type: 'line',
+                borderColor: 'rgba(231, 76, 60, 1)',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Produtos'
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Quantidade'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Valor (R$)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+}
+
+function criarGraficoEconomiaMensal(economiaMensal) {
+    const ctx = document.getElementById('graficoEconomiaMensal').getContext('2d');
+    
+    const labels = economiaMensal.map(m => {
+        const [ano, mes] = m.mes.split('-');
+        return new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    });
+    const valores = economiaMensal.map(m => m.valor);
+    
+    graficoEconomiaMensal = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Economia Mensal (R$)',
+                data: valores,
+                borderColor: '#27ae60',
+                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarRankingFuncionarios(funcionarios) {
+    const container = document.getElementById('ranking-funcionarios');
+    container.innerHTML = '';
+    
+    if (funcionarios.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Nenhum dado disponível</p>';
+        return;
+    }
+    
+    funcionarios.forEach((funcionario, index) => {
+        const item = document.createElement('div');
+        item.className = 'border-bottom pb-2 mb-2';
+        
+        const medalha = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}º`;
+        
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${medalha} ${funcionario.nome}</strong><br>
+                    <small class="text-muted">${funcionario.movimentacoes} movimentações</small>
+                </div>
+                <div class="text-end">
+                    <strong>${formatCurrency(funcionario.valor)}</strong>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(item);
+    });
+}
+
+function criarGraficosAdicionais(produtos) {
+    // Gráfico por categoria (simulado)
+    const ctxCategoria = document.getElementById('graficoCategoria').getContext('2d');
+    
+    // Agrupar produtos por categoria
+    const categorias = {};
+    produtos.forEach(produto => {
+        // Simular categoria baseada no código
+        const categoria = produto.codigo.startsWith('P00') ? 
+            (parseInt(produto.codigo.slice(-1)) % 3 === 0 ? 'Curva A' : 
+             parseInt(produto.codigo.slice(-1)) % 3 === 1 ? 'Curva B' : 'Curva C') : 'Curva A';
+        
+        if (!categorias[categoria]) {
+            categorias[categoria] = 0;
+        }
+        categorias[categoria] += produto.valor;
+    });
+    
+    graficoCategoria = new Chart(ctxCategoria, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(categorias),
+            datasets: [{
+                data: Object.values(categorias),
+                backgroundColor: ['#e74c3c', '#f39c12', '#27ae60'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Gráfico por obras (simulado)
+    const ctxObras = document.getElementById('graficoObras').getContext('2d');
+    
+    // Simular dados de obras
+    const obras = ['OB001', 'OB002', 'OB003', 'OB004', 'OB005'];
+    const valoresObras = obras.map(() => Math.random() * 10000 + 5000);
+    
+    graficoObras = new Chart(ctxObras, {
+        type: 'horizontalBar',
+        data: {
+            labels: obras,
+            datasets: [{
+                label: 'Valor Economizado (R$)',
+                data: valoresObras,
+                backgroundColor: [
+                    'rgba(52, 152, 219, 0.8)',
+                    'rgba(46, 204, 113, 0.8)',
+                    'rgba(155, 89, 182, 0.8)',
+                    'rgba(241, 196, 15, 0.8)',
+                    'rgba(230, 126, 34, 0.8)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarEstatisticasDetalhadas(produtos, economia) {
+    const totalAlocacoes = produtos.reduce((sum, p) => sum + p.quantidade, 0);
+    const produtosDiferentes = produtos.length;
+    const obrasAtendidas = 5; // Simulado
+    
+    const maiorAlocacao = Math.max(...produtos.map(p => p.valor));
+    const mediaAlocacao = produtos.length > 0 ? 
+        produtos.reduce((sum, p) => sum + p.valor, 0) / produtos.length : 0;
+    
+    document.getElementById('total-alocacoes').textContent = totalAlocacoes;
+    document.getElementById('produtos-diferentes').textContent = produtosDiferentes;
+    document.getElementById('obras-atendidas').textContent = obrasAtendidas;
+    document.getElementById('maior-alocacao').textContent = formatCurrency(maiorAlocacao);
+    document.getElementById('media-alocacao').textContent = formatCurrency(mediaAlocacao);
+    
+    // Simular datas
+    const hoje = new Date();
+    const primeiraData = new Date(hoje.getTime() - (90 * 24 * 60 * 60 * 1000));
+    
+    document.getElementById('primeira-movimentacao').textContent = 
+        primeiraData.toLocaleDateString('pt-BR');
+    document.getElementById('ultima-movimentacao').textContent = 
+        hoje.toLocaleDateString('pt-BR');
+}
+
+function atualizarTabelaProdutosValiosos(produtos) {
+    const tbody = document.getElementById('tabela-produtos-valiosos');
+    tbody.innerHTML = '';
+    
+    if (produtos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum produto encontrado</td></tr>';
+        return;
+    }
+    
+    // Ordenar por valor e pegar os top 20
+    const produtosOrdenados = produtos
+        .sort((a, b) => b.valor - a.valor)
+        .slice(0, 20);
+    
+    produtosOrdenados.forEach((produto, index) => {
+        const tr = document.createElement('tr');
+        
+        // Simular categoria e data
+        const categoria = produto.codigo.startsWith('P00') ? 
+            (parseInt(produto.codigo.slice(-1)) % 3 === 0 ? 'Curva A' : 
+             parseInt(produto.codigo.slice(-1)) % 3 === 1 ? 'Curva B' : 'Curva C') : 'Curva A';
+        
+        const ultimaAlocacao = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+        const valorMedio = produto.quantidade > 0 ? produto.valor / produto.quantidade : 0;
+        
+        let badgeCategoria = 'bg-primary';
+        if (categoria === 'Curva A') badgeCategoria = 'bg-danger';
+        else if (categoria === 'Curva B') badgeCategoria = 'bg-warning';
+        else if (categoria === 'Curva C') badgeCategoria = 'bg-success';
+        
+        const posicao = index + 1;
+        let medalha = '';
+        if (posicao === 1) medalha = '🥇';
+        else if (posicao === 2) medalha = '🥈';
+        else if (posicao === 3) medalha = '🥉';
+        
+        tr.innerHTML = `
+            <td><strong>${medalha} ${posicao}º</strong></td>
+            <td><strong>${produto.codigo}</strong></td>
+            <td>${produto.nome}</td>
+            <td><span class="badge ${badgeCategoria}">${categoria}</span></td>
+            <td>${produto.quantidade}</td>
+            <td><strong>${formatCurrency(produto.valor)}</strong></td>
+            <td>${formatCurrency(valorMedio)}</td>
+            <td>${ultimaAlocacao.toLocaleDateString('pt-BR')}</td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+}
+</script>
+{% endblock %}
+

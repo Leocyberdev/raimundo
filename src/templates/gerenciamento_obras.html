@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Obras - Sistema de Almoxarifado</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Almoxarifado</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/produtos/cadastro">Cadastrar Produto</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/categorias">Categorias</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/fornecedores">Fornecedores</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/estoque">Estoque</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/produtos/alocar">Alocar Produtos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="/gerenciamento">Gerenciamento de Obras </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/historico">Histórico</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/estatisticas">Estatísticas</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1 class="mb-4">Gerenciamento de Obras</h1>
+
+        <!-- Formulário para Criar/Editar Obra -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Criar/Editar Obra</h5>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-success btn-sm" id="novaObraBtn">
+                        <i class="bi bi-plus-circle"></i> Nova Obra
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="obraForm">
+                    <input type="hidden" id="obraId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="numeroObra" class="form-label">Número da Obra</label>
+                            <input type="text" class="form-control" id="numeroObra" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="nomeObra" class="form-label">Nome da Obra</label>
+                            <input type="text" class="form-control" id="nomeObra" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descricaoObra" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricaoObra" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="dataInicio" class="form-label">Data de Início</label>
+                            <input type="date" class="form-control" id="dataInicio">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="dataFim" class="form-label">Data de Fim</label>
+                            <input type="date" class="form-control" id="dataFim">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="statusObra" class="form-label">Status</label>
+                            <select class="form-select" id="statusObra">
+                                <option value="Prevista">Prevista</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Pausada">Pausada</option>
+                                <option value="Entregue">Entregue</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Salvar Obra
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="limparForm">
+                            <i class="bi bi-x-circle"></i> Limpar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Histórico de Obras -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Histórico de Obras</h5>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-secondary btn-sm" id="limparBusca">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="filtroStatus" class="form-label">Filtrar por Status</label>
+                        <select class="form-select" id="filtroStatus">
+                            <option value="">Todos</option>
+                            <option value="Prevista">Prevista</option>
+                            <option value="Em Andamento">Em Andamento</option>
+                            <option value="Pausada">Pausada</option>
+                            <option value="Entregue">Entregue</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="buscaObra" class="form-label">Buscar Obra (Número ou Nome)</label>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" id="buscaObra" placeholder="Digite o número ou nome da obra..." autocomplete="off">
+                            <div id="sugestoesObra" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm" style="z-index: 1000; max-height: 200px; overflow-y: auto; display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="listaObras"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const obraForm = document.getElementById("obraForm");
+            const obraIdInput = document.getElementById("obraId");
+            const numeroObraInput = document.getElementById("numeroObra");
+            const nomeObraInput = document.getElementById("nomeObra");
+            const descricaoObraInput = document.getElementById("descricaoObra");
+            const dataInicioInput = document.getElementById("dataInicio");
+            const dataFimInput = document.getElementById("dataFim");
+            const statusObraSelect = document.getElementById("statusObra");
+            const limparFormBtn = document.getElementById("limparForm");
+            const filtroStatusSelect = document.getElementById("filtroStatus");
+            const buscaObraInput = document.getElementById("buscaObra");
+            const buscarObrasBtn = document.getElementById("buscarObras");
+            const limparBuscaBtn = document.getElementById("limparBusca");
+            const listaObrasDiv = document.getElementById("listaObras");
+
+            const novaObraBtn = document.getElementById("novaObraBtn");
+
+            // Função para carregar obras
+            async function carregarObras() {
+                const status = filtroStatusSelect.value;
+                const busca = buscaObraInput.value;
+                let url = `/api/obras`;
+                const params = new URLSearchParams();
+                if (busca) {
+                    params.append("busca", busca);
+                } else if (status) {
+                    params.append("status", status);
+                }
+                if (params.toString()) url += `?${params.toString()}`;
+
+                const response = await fetch(url);
+                const obras = await response.json();
+                listaObrasDiv.innerHTML = '';
+                if (obras.length === 0) {
+                    listaObrasDiv.innerHTML = '<p>Nenhuma obra encontrada.</p>';
+                    return;
+                }
+
+                obras.forEach(obra => {
+                    const obraCard = document.createElement('div');
+                    obraCard.className = 'card mb-3';
+                    obraCard.innerHTML = `
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            Obra: ${obra.numero_obra} - ${obra.nome_obra}
+                            <div>
+                                <span class="badge bg-info">${obra.status}</span>
+                                <button class="btn btn-sm btn-warning editar-obra" data-id="${obra.id}">Editar</button>
+                                <button class="btn btn-sm btn-danger excluir-obra" data-id="${obra.id}">Excluir</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Descrição:</strong> ${obra.descricao || 'N/A'}</p>
+                            <p><strong>Início:</strong> ${obra.data_inicio || 'N/A'}</p>
+                            <p><strong>Fim:</strong> ${obra.data_fim || 'N/A'}</p>
+                            ${obra.data_entrega ? `<p><strong>Data de Entrega:</strong> ${new Date(obra.data_entrega).toLocaleDateString()}</p>` : ''}
+                            <h6>Produtos Alocados:</h6>
+                            <ul class="list-group list-group-flush">
+                                ${obra.produtos_alocados.length > 0 ? 
+                                    obra.produtos_alocados.map(produto => `
+                                        <li class="list-group-item">
+                                            ${produto.nome} (${produto.codigo}) - Quantidade: ${produto.quantidade_alocada}
+                                        </li>
+                                    `).join('')
+                                    : '<li class="list-group-item">Nenhum produto alocado.</li>'
+                                }
+                            </ul>
+                        </div>
+                    `;
+                    listaObrasDiv.appendChild(obraCard);
+                });
+
+                document.querySelectorAll('.editar-obra').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const obraId = e.target.dataset.id;
+                        // Buscar obra específica na lista já carregada
+                        const obra = obras.find(o => o.id == obraId);
+                        
+                        obraIdInput.value = obra.id;
+                        numeroObraInput.value = obra.numero_obra;
+                        nomeObraInput.value = obra.nome_obra;
+                        descricaoObraInput.value = obra.descricao || '';
+                        dataInicioInput.value = obra.data_inicio || '';
+                        dataFimInput.value = obra.data_fim || '';
+                        statusObraSelect.value = obra.status;
+                    });
+                });
+
+                document.querySelectorAll('.excluir-obra').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const obraId = e.target.dataset.id;
+                        const senha = prompt('Digite a senha de administrador para excluir a obra:');
+                        if (!senha) return;
+
+                        const response = await fetch(`/api/obras/${obraId}`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ senha: senha })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert(result.message);
+                            carregarObras();
+                        } else {
+                            alert(`Erro: ${result.error}`);
+                        }
+                    });
+                });
+            }
+
+            // Enviar formulário (Criar/Editar)
+            obraForm.addEventListener("submit", async function(event) {
+                event.preventDefault();
+
+                const obraId = obraIdInput.value;
+                const numero_obra = numeroObraInput.value;
+                const nome_obra = nomeObraInput.value;
+                const descricao = descricaoObraInput.value;
+                const data_inicio = dataInicioInput.value;
+                const data_fim = dataFimInput.value;
+                const status = statusObraSelect.value;
+
+                const data = {
+                    numero_obra,
+                    nome_obra,
+                    descricao,
+                    data_inicio,
+                    data_fim,
+                    status
+                };
+
+                let url = '/api/obras';
+                let method = 'POST';
+
+                if (obraId) {
+                    url = `/api/obras/${obraId}`;
+                    method = 'PUT';
+                    const senha = prompt('Digite a senha de administrador para editar a obra:');
+                    if (!senha) return;
+                    data.senha = senha;
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Obra salva com sucesso!');
+                    obraForm.reset();
+                    obraIdInput.value = '';
+                    carregarObras();
+                } else {
+                    alert(`Erro: ${result.error}`);
+                }
+            });
+
+            // Botão Nova Obra
+            novaObraBtn.addEventListener("click", function() {
+                obraForm.reset();
+                obraIdInput.value = '';
+                numeroObraInput.focus();
+            });
+
+            // Limpar formulário
+            limparFormBtn.addEventListener("click", function() {
+                obraForm.reset();
+                obraIdInput.value = '';
+            });
+
+            // Eventos de filtro e busca
+            filtroStatusSelect.addEventListener("change", carregarObras);
+            buscaObraInput.addEventListener("input", function() {
+                // Se o campo de busca estiver vazio, recarregar com base no filtro de status
+                if (this.value.trim() === '') {
+                    carregarObras();
+                }
+            });
+            limparBuscaBtn.addEventListener("click", function() {
+                filtroStatusSelect.value = '';
+                buscaObraInput.value = '';
+                carregarObras();
+            });
+
+            // Carregar obras ao iniciar a página
+            carregarObras();
+            
+            // Configurar autocomplete para busca de obras
+            configurarAutocompleteBusca();
+        });
+
+        // Função para configurar autocomplete na busca de obras
+        function configurarAutocompleteBusca() {
+            const buscaInput = document.getElementById('buscaObra');
+            const sugestoesDiv = document.getElementById('sugestoesObra');
+            let timeoutId;
+
+            buscaInput.addEventListener('input', function() {
+                const termo = this.value.trim();
+                
+                // Limpar timeout anterior
+                clearTimeout(timeoutId);
+                
+                if (termo.length < 1) {
+                    sugestoesDiv.style.display = 'none';
+                    return;
+                }
+                
+                // Aguardar 300ms antes de fazer a busca
+                timeoutId = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`/api/obras/sugestoes?termo=${encodeURIComponent(termo)}`);
+                        const sugestoes = await response.json();
+                        
+                        if (response.ok && sugestoes.length > 0) {
+                            mostrarSugestoes(sugestoes);
+                        } else {
+                            sugestoesDiv.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('Erro ao buscar sugestões:', error);
+                        sugestoesDiv.style.display = 'none';
+                    }
+                }, 300);
+            });
+
+            // Esconder sugestões quando clicar fora
+            document.addEventListener('click', function(e) {
+                if (!buscaInput.contains(e.target) && !sugestoesDiv.contains(e.target)) {
+                    sugestoesDiv.style.display = 'none';
+                }
+            });
+
+            // Permitir navegação com teclado
+            buscaInput.addEventListener('keydown', function(e) {
+                const itens = sugestoesDiv.querySelectorAll('.sugestao-item');
+                const ativo = sugestoesDiv.querySelector('.sugestao-item.active');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (ativo) {
+                        ativo.classList.remove('active');
+                        const proximo = ativo.nextElementSibling;
+                        if (proximo) {
+                            proximo.classList.add('active');
+                        } else {
+                            itens[0]?.classList.add('active');
+                        }
+                    } else {
+                        itens[0]?.classList.add('active');
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (ativo) {
+                        ativo.classList.remove('active');
+                        const anterior = ativo.previousElementSibling;
+                        if (anterior) {
+                            anterior.classList.add('active');
+                        } else {
+                            itens[itens.length - 1]?.classList.add('active');
+                        }
+                    } else {
+                        itens[itens.length - 1]?.classList.add('active');
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (ativo) {
+                        ativo.click();
+                    } else {
+                        // Limpar filtro de status quando buscar por obra específica
+                        document.getElementById('filtroStatus').value = '';
+                        carregarObras();
+                    }
+                } else if (e.key === 'Escape') {
+                    sugestoesDiv.style.display = 'none';
+                }
+            });
+        }
+
+        // Função para mostrar sugestões
+        function mostrarSugestoes(sugestoes) {
+            const sugestoesDiv = document.getElementById('sugestoesObra');
+            sugestoesDiv.innerHTML = '';
+            
+            sugestoes.forEach(sugestao => {
+                const item = document.createElement('div');
+                item.className = 'sugestao-item px-3 py-2 cursor-pointer border-bottom';
+                item.style.cursor = 'pointer';
+                item.innerHTML = `
+                    <div class="fw-bold">${sugestao.numero_obra}</div>
+                    <div class="text-muted small">${sugestao.nome_obra}</div>
+                `;
+                
+                // Hover effects
+                item.addEventListener('mouseenter', function() {
+                    // Remover active de outros itens
+                    sugestoesDiv.querySelectorAll('.sugestao-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.classList.remove('active');
+                });
+                
+                // Click para selecionar
+                item.addEventListener('click', function() {
+                    document.getElementById('buscaObra').value = sugestao.texto_completo;
+                    sugestoesDiv.style.display = 'none';
+                    // Limpar filtro de status quando uma obra específica for selecionada
+                    document.getElementById('filtroStatus').value = '';
+                    carregarObras();
+                });
+                
+                sugestoesDiv.appendChild(item);
+            });
+            
+            sugestoesDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
+
+
