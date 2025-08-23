@@ -244,6 +244,9 @@
                         }
                     });
                 });
+            } catch (error) {
+                console.error('Erro ao carregar obras:', error);
+                listaObrasDiv.innerHTML = '<p>Erro ao carregar obras.</p>';
             }
         }
 
@@ -334,6 +337,14 @@
             buscaObraInput.addEventListener("input", function() {
                 // Se o campo de busca estiver vazio, recarregar com base no filtro de status
                 if (this.value.trim() === '') {
+                    carregarObras();
+                }
+            });
+
+            // Buscar ao pressionar Enter
+            buscaObraInput.addEventListener("keypress", function(e) {
+                if (e.key === 'Enter') {
+                    filtroStatusSelect.value = '';
                     carregarObras();
                 }
             });
