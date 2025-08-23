@@ -230,12 +230,12 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="edit-descricao" class="form-label">Descrição</label>
                         <textarea class="form-control" id="edit-descricao" rows="3"></textarea>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit-fornecedor" class="form-label">Fornecedor</label>
@@ -246,23 +246,61 @@
                             <input type="text" class="form-control" id="edit-local">
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label for="edit-preco" class="form-label">Preço</label>
+                            <label for="edit-preco" class="form-label">Preço (R$)</label>
                             <input type="number" class="form-control" id="edit-preco" step="0.01" min="0">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label for="edit-status" class="form-label">Status *</label>
-                            <select class="form-select" id="edit-status" required>
+                            <label for="edit-status" class="form-label">Status</label>
+                            <select class="form-select" id="edit-status">
                                 <option value="true">Ativo</option>
                                 <option value="false">Inativo</option>
                             </select>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="edit-senha" class="form-label">Senha Admin *</label>
-                            <input type="password" class="form-control" id="edit-senha" required>
+                    </div>
+
+                    <!-- Seção de Gerenciamento de Saldo -->
+                    <div class="card bg-light mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-archive"></i> Gerenciar Estoque</h6>
                         </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Estoque Atual</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-info text-white" id="estoque-atual">0</span>
+                                        <span class="input-group-text" id="unidade-atual">unidade</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="operacao-saldo" class="form-label">Operação</label>
+                                    <select class="form-select" id="operacao-saldo">
+                                        <option value="">Não alterar estoque</option>
+                                        <option value="adicionar">Adicionar ao estoque</option>
+                                        <option value="retirar">Retirar do estoque</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="quantidade-saldo" class="form-label">Quantidade</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="quantidade-saldo" 
+                                               min="0.001" step="0.001" disabled>
+                                        <span class="input-group-text" id="unidade-saldo">unidade</span>
+                                    </div>
+                                    <div class="form-text" id="ajuda-saldo" style="display: none;">
+                                        Máximo disponível para retirada: <span id="max-retirar-edit">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit-senha" class="form-label">Senha de Administrador *</label>
+                        <input type="password" class="form-control" id="edit-senha" required>
                     </div>
                 </form>
             </div>
@@ -295,13 +333,13 @@
                         <div class="search-results" id="search-results-excluir"></div>
                     </div>
                 </div>
-                
+
                 <div id="produto-info-excluir" style="display: none;">
                     <div class="alert alert-info">
                         <h6>Produto Selecionado:</h6>
                         <div id="detalhes-produto-excluir"></div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="filtro-status-excluir" class="form-label">Filtrar por Status</label>
                         <select class="form-select" id="filtro-status-excluir" onchange="filtrarProdutosExcluir()">
@@ -310,12 +348,12 @@
                             <option value="inativo">Inativo</option>
                         </select>
                     </div>
-                    
+
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
                         <strong>Atenção!</strong> Esta ação irá desativar o produto. Ele não será mais exibido nas listagens ativas.
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="senha-excluir" class="form-label">Senha de Administrador *</label>
                         <input type="password" class="form-control" id="senha-excluir" required>
@@ -492,7 +530,7 @@ function atualizarResumo(produtos) {
     document.getElementById("produtos-estoque").textContent = comEstoque;
     document.getElementById("produtos-inativos").textContent = inativos;
     document.getElementById("produtos-zerado").textContent = zerado;
-    
+
     // Atualizar gráficos
     atualizarGraficos(total, comEstoque, inativos, zerado);
 }
@@ -663,10 +701,10 @@ function abrirModalExclusao() {
     document.getElementById('produto-info-excluir').style.display = 'none';
     document.getElementById('search-results-excluir').style.display = 'none';
     document.getElementById('btn-confirmar-exclusao').disabled = true;
-    
+
     // Configurar busca
     configurarBuscaExcluir();
-    
+
     // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
     modal.show();
@@ -694,7 +732,7 @@ function configurarBuscaFornecedor() {
                 const produtos = produtosCarregados.filter(p => 
                     p.fornecedor && p.fornecedor.toLowerCase().includes(termo.toLowerCase())
                 );
-                
+
                 // Extrair fornecedores únicos
                 const fornecedoresUnicos = [...new Set(produtos.map(p => p.fornecedor))];
 
@@ -768,7 +806,7 @@ function formatDate(dateString) {
 // Função para editar produto
 async function editarProduto(produtoId) {
     console.log('Iniciando edição do produto:', produtoId);
-    
+
     try {
         const produto = produtosCarregados.find(p => p.id === produtoId);
         if (!produto) {
@@ -791,16 +829,18 @@ async function editarProduto(produtoId) {
         } catch (error) {
             console.warn('Erro ao carregar categorias, continuando sem elas:', error);
         }
-        
+
         // Preencher os campos do formulário
         preencherFormularioEdicao(produto);
-        
+        // Configurar os controles de saldo
+        configurarControlesSaldo();
+
         // Exibir o modal
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
-        
+
         console.log('Modal de edição aberto com sucesso');
-        
+
     } catch (error) {
         console.error('Erro ao editar produto:', error);
         showAlert('Erro ao abrir formulário de edição: ' + error.message, 'error');
@@ -809,68 +849,81 @@ async function editarProduto(produtoId) {
 
 // Função auxiliar para preencher formulário
 function preencherFormularioEdicao(produto) {
-    console.log('Preenchendo formulário com:', produto);
-    
-    const campos = {
-        'edit-nome': produto.nome || '',
-        'edit-descricao': produto.descricao || '',
-        'edit-fornecedor': produto.fornecedor || '',
-        'edit-local': produto.local_produto || '',
-        'edit-preco': produto.preco || 0,
-        'edit-status': produto.ativo !== false ? 'true' : 'false',
-        'edit-senha': ''
-    };
+    console.log('Preenchendo formulário com produto:', produto);
 
-    // Preencher campos de texto
-    Object.keys(campos).forEach(id => {
-        const elemento = document.getElementById(id);
-        if (elemento) {
-            elemento.value = campos[id];
-            console.log(`Campo ${id} preenchido com:`, campos[id]);
+    document.getElementById('edit-codigo').value = produto.codigo || '';
+    document.getElementById('edit-nome').value = produto.nome || '';
+    document.getElementById('edit-descricao').value = produto.descricao || '';
+    document.getElementById('edit-categoria').value = produto.categoria || '';
+    document.getElementById('edit-fornecedor').value = produto.fornecedor || '';
+    document.getElementById('edit-local').value = produto.local_produto || '';
+    document.getElementById('edit-preco').value = produto.preco || 0;
+    document.getElementById('edit-status').value = produto.ativo ? 'true' : 'false';
+
+    // Preencher informações de estoque
+    document.getElementById('estoque-atual').textContent = produto.quantidade_estoque || 0;
+    document.getElementById('unidade-atual').textContent = produto.unidade_medida || 'unidade';
+    document.getElementById('unidade-saldo').textContent = produto.unidade_medida || 'unidade';
+    document.getElementById('max-retirar-edit').textContent = produto.quantidade_estoque || 0;
+
+    console.log('Formulário preenchido com sucesso');
+}
+
+function configurarControlesSaldo() {
+    const operacaoSelect = document.getElementById('operacao-saldo');
+    const quantidadeInput = document.getElementById('quantidade-saldo');
+    const ajudaDiv = document.getElementById('ajuda-saldo');
+
+    operacaoSelect.addEventListener('change', function() {
+        const operacao = this.value;
+
+        if (operacao === '') {
+            quantidadeInput.disabled = true;
+            quantidadeInput.value = '';
+            ajudaDiv.style.display = 'none';
         } else {
-            console.warn(`Elemento ${id} não encontrado no DOM`);
+            quantidadeInput.disabled = false;
+            quantidadeInput.focus();
+
+            if (operacao === 'retirar') {
+                ajudaDiv.style.display = 'block';
+                quantidadeInput.max = produtoEdicao.quantidade_estoque;
+            } else {
+                ajudaDiv.style.display = 'none';
+                quantidadeInput.removeAttribute('max');
+            }
         }
     });
 
-    // Preencher categoria
-    setTimeout(() => {
-        const selectCategoria = document.getElementById('edit-categoria');
-        if (selectCategoria && produto.categoria) {
-            // Verificar se a categoria existe nas opções
-            const option = Array.from(selectCategoria.options).find(opt => opt.value === produto.categoria);
-            if (option) {
-                selectCategoria.value = produto.categoria;
-                console.log('Categoria selecionada:', produto.categoria);
-            } else {
-                console.warn('Categoria não encontrada nas opções:', produto.categoria);
-            }
-        } else {
-            console.warn('Select de categoria não encontrado ou categoria vazia');
-        }
-    }, 200);
+    // Reset ao abrir o modal
+    operacaoSelect.value = '';
+    quantidadeInput.disabled = true;
+    quantidadeInput.value = '';
+    ajudaDiv.style.display = 'none';
 }
+
 
 // Carregar categorias para o select de edição
 async function carregarCategoriasEdicao() {
     console.log('Carregando categorias para edição...');
-    
+
     try {
         const response = await fetch('/api/categorias');
-        
+
         if (!response.ok) {
             throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const categorias = await response.json();
         const select = document.getElementById('edit-categoria');
-        
+
         if (!select) {
             throw new Error('Elemento select de categoria não encontrado');
         }
 
         // Limpar opções existentes
         select.innerHTML = '';
-        
+
         // Adicionar opção padrão
         const optionDefault = document.createElement('option');
         optionDefault.value = '';
@@ -879,7 +932,7 @@ async function carregarCategoriasEdicao() {
 
         // Adicionar categorias básicas se não houver categorias da API
         const categoriasBasicas = ['Curva A', 'Curva B', 'Curva C'];
-        
+
         if (categorias && Array.isArray(categorias) && categorias.length > 0) {
             const categoriasAtivas = categorias.filter(cat => cat.ativa !== false);
             categoriasAtivas.forEach(categoria => {
@@ -899,7 +952,7 @@ async function carregarCategoriasEdicao() {
             });
             console.log('Carregadas categorias básicas para edição');
         }
-        
+
     } catch (error) {
         console.error('Erro ao carregar categorias para edição:', error);
         const select = document.getElementById('edit-categoria');
@@ -919,14 +972,15 @@ async function carregarCategoriasEdicao() {
 // Salvar edição do produto
 async function salvarEdicao() {
     if (!produtoEdicao) {
-        showAlert('Nenhum produto selecionado para edição', 'error');
+        showAlert('Nenhum produto selecionado para edição', 'warning');
         return;
     }
 
-    // Validar campos obrigatórios
     const nome = document.getElementById('edit-nome').value.trim();
     const categoria = document.getElementById('edit-categoria').value;
     const senha = document.getElementById('edit-senha').value.trim();
+    const operacaoSaldo = document.getElementById('operacao-saldo').value;
+    const quantidadeSaldo = parseFloat(document.getElementById('quantidade-saldo').value) || 0;
 
     if (!nome) {
         showAlert('Nome do produto é obrigatório', 'warning');
@@ -943,47 +997,84 @@ async function salvarEdicao() {
         return;
     }
 
-    const dados = {
-        nome: nome,
-        descricao: document.getElementById('edit-descricao').value.trim(),
-        categoria: categoria,
-        fornecedor: document.getElementById('edit-fornecedor').value.trim(),
-        local_produto: document.getElementById('edit-local').value.trim(),
-        preco: parseFloat(document.getElementById('edit-preco').value) || 0,
-        ativo: document.getElementById('edit-status').value === 'true',
-        senha: senha
-    };
+    // Validar operação de saldo
+    if (operacaoSaldo && quantidadeSaldo <= 0) {
+        showAlert('Quantidade deve ser maior que zero para operações de saldo', 'warning');
+        return;
+    }
+
+    if (operacaoSaldo === 'retirar' && quantidadeSaldo > produtoEdicao.quantidade_estoque) {
+        showAlert('Quantidade a retirar não pode ser maior que o estoque atual', 'warning');
+        return;
+    }
 
     try {
-        const response = await fetch(`/api/produtos/${produtoEdicao.id}`, {
+        // 1. Atualizar informações do produto
+        const dadosProduto = {
+            nome: nome,
+            descricao: document.getElementById('edit-descricao').value.trim(),
+            categoria: categoria,
+            fornecedor: document.getElementById('edit-fornecedor').value.trim(),
+            local_produto: document.getElementById('edit-local').value.trim(),
+            preco: parseFloat(document.getElementById('edit-preco').value) || 0,
+            ativo: document.getElementById('edit-status').value === 'true',
+            senha: senha
+        };
+
+        const responseProduto = await fetch(`/api/produtos/${produtoEdicao.id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(dados)
+            body: JSON.stringify(dadosProduto)
         });
 
-        const result = await response.json();
+        const resultProduto = await responseProduto.json();
 
-        if (response.ok) {
-            showAlert('Produto atualizado com sucesso!', 'success');
-            
-            // Fechar modal
-            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalEdicao'));
-            if (modalInstance) {
-                modalInstance.hide();
-            }
-            
-            // Limpar dados de edição
-            produtoEdicao = null;
-            
-            // Recarregar lista de produtos
-            await carregarProdutos();
-        } else {
-            showAlert('Erro ao salvar: ' + (result.error || 'Erro desconhecido'), 'danger');
+        if (!responseProduto.ok) {
+            showAlert('Erro ao atualizar produto: ' + resultProduto.error, 'danger');
+            return;
         }
+
+        // 2. Executar operação de saldo se necessário
+        if (operacaoSaldo && quantidadeSaldo > 0) {
+            const dadosSaldo = {
+                operacao: operacaoSaldo,
+                quantidade: quantidadeSaldo,
+                senha: senha
+            };
+
+            const responseSaldo = await fetch(`/api/produtos/${produtoEdicao.id}/saldo`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dadosSaldo)
+            });
+
+            const resultSaldo = await responseSaldo.json();
+
+            if (!responseSaldo.ok) {
+                showAlert('Produto atualizado, mas erro na operação de saldo: ' + resultSaldo.error, 'warning');
+                return;
+            }
+
+            showAlert(`Produto atualizado e saldo ${operacaoSaldo === 'adicionar' ? 'adicionado' : 'retirado'} com sucesso!`, 'success');
+        } else {
+            showAlert('Produto atualizado com sucesso!', 'success');
+        }
+
+        // Fechar modal
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalEdicao'));
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+
+        // Recarregar produtos
+        await carregarProdutos();
+        produtoEdicao = null;
+
     } catch (error) {
-        console.error('Erro ao salvar edição:', error);
         showAlert('Erro de conexão: ' + error.message, 'danger');
     }
 }
@@ -1002,13 +1093,13 @@ function excluirProduto(produtoId) {
 
     // Definir produto para exclusão
     produtoExclusao = produto;
-    
+
     // Preencher informações do produto
     mostrarInfoProdutoExcluir(produto);
-    
+
     // Configurar busca
     configurarBuscaExcluir();
-    
+
     // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
     modal.show();
@@ -1017,7 +1108,7 @@ function excluirProduto(produtoId) {
 function mostrarInfoProdutoExcluir(produto) {
     const infoDiv = document.getElementById('produto-info-excluir');
     const detalhesDiv = document.getElementById('detalhes-produto-excluir');
-    
+
     detalhesDiv.innerHTML = `
         <strong>Código:</strong> ${produto.codigo}<br>
         <strong>Nome:</strong> ${produto.nome}<br>
@@ -1026,12 +1117,12 @@ function mostrarInfoProdutoExcluir(produto) {
         <strong>Estoque:</strong> ${produto.quantidade_estoque}<br>
         <strong>Preço:</strong> ${formatCurrency(produto.preco)}
     `;
-    
+
     infoDiv.style.display = 'block';
-    
+
     // Habilitar botão de confirmação
     document.getElementById('btn-confirmar-exclusao').disabled = false;
-    
+
     // Preencher campo de busca
     document.getElementById('busca-excluir').value = produto.codigo;
 }
@@ -1043,9 +1134,9 @@ function configurarBuscaExcluir() {
 
     input.addEventListener('input', function() {
         const termo = this.value.trim();
-        
+
         clearTimeout(timeoutId);
-        
+
         if (termo.length < 1) {
             results.style.display = 'none';
             return;
@@ -1057,23 +1148,23 @@ function configurarBuscaExcluir() {
         timeoutId = setTimeout(async () => {
             try {
                 const response = await fetch(`/api/busca/produtos?q=${encodeURIComponent(termo)}`);
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const produtos = await response.json();
-                
+
                 // Aplicar filtro de status se selecionado
                 const statusFiltro = document.getElementById('filtro-status-excluir').value;
                 let produtosFiltrados = produtos;
-                
+
                 if (statusFiltro === 'ativo') {
                     produtosFiltrados = produtos.filter(p => p.ativo === true);
                 } else if (statusFiltro === 'inativo') {
                     produtosFiltrados = produtos.filter(p => p.ativo === false);
                 }
-                
+
                 mostrarResultadosBuscaExcluir(produtosFiltrados);
             } catch (error) {
                 console.error('Erro na busca:', error);
@@ -1103,11 +1194,11 @@ function mostrarResultadosBuscaExcluir(produtos) {
     produtos.forEach(produto => {
         const item = document.createElement('div');
         item.className = 'search-item';
-        
+
         const statusBadge = produto.ativo ? 
             '<span class="badge bg-success">Ativo</span>' : 
             '<span class="badge bg-secondary">Inativo</span>';
-        
+
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -1117,13 +1208,13 @@ function mostrarResultadosBuscaExcluir(produtos) {
                 <div>${statusBadge}</div>
             </div>
         `;
-        
+
         item.onclick = function() {
             produtoExclusao = produto;
             mostrarInfoProdutoExcluir(produto);
             results.style.display = 'none';
         };
-        
+
         results.appendChild(item);
     });
 
@@ -1163,20 +1254,20 @@ async function confirmarExclusao() {
 
         if (response.ok) {
             showAlert('Produto excluído com sucesso!', 'success');
-            
+
             // Fechar modal
             const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalExclusao'));
             if (modalInstance) {
                 modalInstance.hide();
             }
-            
+
             // Limpar dados
             produtoExclusao = null;
             document.getElementById('senha-excluir').value = '';
             document.getElementById('busca-excluir').value = '';
             document.getElementById('produto-info-excluir').style.display = 'none';
             document.getElementById('btn-confirmar-exclusao').disabled = true;
-            
+
             // Recarregar lista de produtos
             await carregarProdutos();
         } else {
@@ -1198,9 +1289,9 @@ function showAlert(message, type = 'info') {
         'info': 'info',
         'danger': 'danger'
     };
-    
+
     const alertType = typeMap[type] || 'info';
-    
+
     // Criar container de alertas se não existir
     let alertContainer = document.getElementById('alert-container');
     if (!alertContainer) {
