@@ -245,6 +245,11 @@ async function carregarObras() {
 
 async function carregarFuncionarios() {
     try {
+        // Carregar usuário logado
+        const userResponse = await fetch('/api/usuario-logado');
+        const userData = await userResponse.json();
+        
+        // Carregar funcionários
         const response = await fetch('/api/funcionarios');
         const data = await response.json();
 
@@ -253,17 +258,21 @@ async function carregarFuncionarios() {
             const select = document.getElementById('funcionario-select');
             select.innerHTML = '<option value="">Selecione o funcionário</option>';
 
+            // Adicionar usuário logado como primeira opção (se não estiver na lista de funcionários)
+            if (userResponse.ok) {
+                const usuarioLogadoOption = document.createElement('option');
+                usuarioLogadoOption.value = `user_${userData.id}`;
+                usuarioLogadoOption.textContent = `${userData.username} (Usuário Logado)`;
+                usuarioLogadoOption.selected = true; // Pré-selecionar
+                select.appendChild(usuarioLogadoOption);
+            }
+
             funcionarios.forEach(funcionario => {
                 const option = document.createElement('option');
                 option.value = funcionario.id;
                 option.textContent = `${funcionario.nome} - ${funcionario.cargo}`;
                 select.appendChild(option);
             });
-
-            // Pré-selecionar o primeiro funcionário (usuário logado)
-            if (funcionarios.length > 0) {
-                select.value = funcionarios[0].id;
-            }
         }
     } catch (error) {
         showAlert('Erro ao carregar funcionários: ' + error.message, 'danger');
@@ -419,10 +428,19 @@ function atualizarResumo() {
 
     const quantidade = parseInt(document.getElementById('quantidade').value) || 0;
     const obraId = document.getElementById('obra-select').value;
-    const funcionarioId = document.getElementById('funcionario-select').value;
+    const funcionarioSelect = document.getElementById('funcionario-select').value;
 
     const obra = obras.find(o => o.id == obraId);
-    const funcionario = funcionarios.find(f => f.id == funcionarioId);
+    
+    // Determinar nome do funcionário
+    let nomeFuncionario = '';
+    if (funcionarioSelect.startsWith('user_')) {
+        const option = document.querySelector(`option[value="${funcionarioSelect}"]`);
+        nomeFuncionario = option ? option.textContent : 'Usuário Logado';
+    } else {
+        const funcionario = funcionarios.find(f => f.id == funcionarioSelect);
+        nomeFuncionario = funcionario ? funcionario.nome : '';
+    }
 
     const valorTotal = quantidade * produtoSelecionado.preco;
 
@@ -437,7 +455,7 @@ function atualizarResumo() {
             <strong>Valor Total:</strong> ${formatCurrency(valorTotal)}
         </div>
         ${obra ? `<div class="mb-2"><strong>Obra:</strong><br><small>${obra.numero_obra} - ${obra.nome_obra}</small></div>` : ''}
-        ${funcionario ? `<div class="mb-2"><strong>Funcionário:</strong><br><small>${funcionario.nome}</small></div>` : ''}
+        ${nomeFuncionario ? `<div class="mb-2"><strong>Funcionário:</strong><br><small>${nomeFuncionario}</small></div>` : ''}
     `;
 }
 
@@ -495,15 +513,24 @@ function mostrarModalConfirmacao() {
 async function confirmarAlocacao() {
     const quantidade = parseInt(document.getElementById('quantidade').value);
     const obraId = document.getElementById('obra-select').value;
-    const funcionarioId = document.getElementById('funcionario-select').value;
+    const funcionarioSelect = document.getElementById('funcionario-select').value;
     const observacoes = document.getElementById('observacoes').value;
+
+    // Determinar se é usuário logado ou funcionário cadastrado
+    let funcionarioId;
+    if (funcionarioSelect.startsWith('user_')) {
+        funcionarioId = 1; // ID padrão para usuários do sistema
+    } else {
+        funcionarioId = parseInt(funcionarioSelect);
+    }
 
     const dados = {
         produto_id: produtoSelecionado.id,
         obra_id: parseInt(obraId),
-        funcionario_id: parseInt(funcionarioId),
+        funcionario_id: funcionarioId,
         quantidade: quantidade,
-        observacoes: observacoes
+        observacoes: observacoes,
+        usuario_logado: funcionarioSelect.startsWith('user_') // Flag para identificar se é usuário logado
     };
 
     try {

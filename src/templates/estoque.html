@@ -87,8 +87,8 @@
     <div class="col-md-3 mb-3">
         <div class="card text-white bg-warning">
             <div class="card-body text-center">
-                <h4 id="produtos-baixo">0</h4>
-                <p class="mb-0">Estoque Baixo</p>
+                <h4 id="produtos-inativos">0</h4>
+                <p class="mb-0">Produtos Inativos</p>
             </div>
         </div>
     </div>
@@ -170,6 +170,76 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Edição de Produto -->
+<div class="modal fade" id="modalEdicao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square"></i> Editar Produto
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-edicao-produto">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-nome" class="form-label">Nome *</label>
+                            <input type="text" class="form-control" id="edit-nome" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-categoria" class="form-label">Categoria *</label>
+                            <select class="form-select" id="edit-categoria" required>
+                                <!-- Categorias serão carregadas dinamicamente -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-descricao" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="edit-descricao" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-fornecedor" class="form-label">Fornecedor</label>
+                            <input type="text" class="form-control" id="edit-fornecedor">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-local" class="form-label">Local</label>
+                            <input type="text" class="form-control" id="edit-local">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="edit-preco" class="form-label">Preço</label>
+                            <input type="number" class="form-control" id="edit-preco" step="0.01" min="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit-status" class="form-label">Status *</label>
+                            <select class="form-select" id="edit-status" required>
+                                <option value="true">Ativo</option>
+                                <option value="false">Inativo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit-senha" class="form-label">Senha Admin *</label>
+                            <input type="password" class="form-control" id="edit-senha" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEdicao()">
+                    <i class="bi bi-check-circle"></i> Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div></div>
 {% endblock %}
 
 {% block extra_js %}
@@ -270,18 +340,9 @@ function atualizarTabela(produtos) {
         else if (produto.categoria.toLowerCase().includes('b')) badgeCategoria = 'bg-warning';
         else if (produto.categoria.toLowerCase().includes('c')) badgeCategoria = 'bg-success';
 
-        let statusEstoque = '';
-        let badgeEstoque = '';
-        if (produto.quantidade_estoque === 0) {
-            statusEstoque = 'Zerado';
-            badgeEstoque = 'bg-danger';
-        } else if (produto.quantidade_estoque <= 10) {
-            statusEstoque = 'Baixo';
-            badgeEstoque = 'bg-warning';
-        } else {
-            statusEstoque = 'Normal';
-            badgeEstoque = 'bg-success';
-        }
+        // Status baseado em ativo/inativo
+        let statusProduto = produto.ativo ? 'Ativo' : 'Inativo';
+        let badgeStatus = produto.ativo ? 'bg-success' : 'bg-secondary';
 
         tr.innerHTML = `
             <td><strong>${produto.codigo}</strong></td>
@@ -292,16 +353,19 @@ function atualizarTabela(produtos) {
             <td>${produto.local_produto || '-'}</td>
             <td>${formatCurrency(produto.preco)}</td>
             <td><strong>${produto.quantidade_estoque}</strong></td>
-            <td><span class="badge ${badgeEstoque}">${statusEstoque}</span></td>
+            <td><span class="badge ${badgeStatus}">${statusProduto}</span></td>
             <td>
                 <button class="btn btn-sm btn-outline-primary" onclick="verDetalhes(${produto.id})">
                     <i class="bi bi-eye"></i>
                 </button>
-                ${produto.quantidade_estoque > 0 ?
+                <button class="btn btn-sm btn-outline-warning" onclick="editarProduto(${produto.id})" title="Editar Produto">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                ${produto.quantidade_estoque > 0 && produto.ativo ?
                     `<button class="btn btn-sm btn-outline-success" onclick="alocarProduto(${produto.id})" title="Alocar Produto">
                         <i class="bi bi-arrow-right-circle"></i>
                     </button>` :
-                    `<button class="btn btn-sm btn-secondary" onclick="showAlert('Produto sem estoque para alocação', 'warning')" title="Sem estoque">
+                    `<button class="btn btn-sm btn-secondary" onclick="showAlert('Produto indisponível para alocação', 'warning')" title="Indisponível">
                         <i class="bi bi-arrow-right-circle"></i>
                     </button>`
                 }
@@ -316,13 +380,13 @@ function atualizarTabela(produtos) {
 
 function atualizarResumo(produtos) {
     const total = produtos.length;
-    const comEstoque = produtos.filter(p => p.quantidade_estoque > 0).length;
-    const baixoEstoque = produtos.filter(p => p.quantidade_estoque > 0 && p.quantidade_estoque <= 10).length;
-    const zerado = produtos.filter(p => p.quantidade_estoque === 0).length;
+    const comEstoque = produtos.filter(p => p.quantidade_estoque > 0 && p.ativo).length;
+    const inativos = produtos.filter(p => !p.ativo).length;
+    const zerado = produtos.filter(p => p.quantidade_estoque === 0 && p.ativo).length;
 
     document.getElementById('total-produtos').textContent = total;
     document.getElementById('produtos-estoque').textContent = comEstoque;
-    document.getElementById('produtos-baixo').textContent = baixoEstoque;
+    document.getElementById('produtos-inativos').textContent = inativos;
     document.getElementById('produtos-zerado').textContent = zerado;
 }
 
@@ -572,6 +636,95 @@ function formatDate(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
+}
+
+// Variável global para produto em edição
+let produtoEdicao = null;
+
+// Função para editar produto
+function editarProduto(produtoId) {
+    const produto = produtosCarregados.find(p => p.id === produtoId);
+    if (!produto) return;
+
+    produtoEdicao = produto;
+
+    // Preencher formulário de edição
+    document.getElementById('edit-nome').value = produto.nome;
+    document.getElementById('edit-descricao').value = produto.descricao || '';
+    document.getElementById('edit-fornecedor').value = produto.fornecedor || '';
+    document.getElementById('edit-local').value = produto.local_produto || '';
+    document.getElementById('edit-preco').value = produto.preco;
+    document.getElementById('edit-status').value = produto.ativo.toString();
+    document.getElementById('edit-senha').value = '';
+
+    // Carregar categorias no select de edição
+    carregarCategoriasEdicao();
+
+    // Mostrar modal
+    new bootstrap.Modal(document.getElementById('modalEdicao')).show();
+}
+
+// Carregar categorias para o select de edição
+async function carregarCategoriasEdicao() {
+    try {
+        const response = await fetch('/api/categorias');
+        const categorias = await response.json();
+
+        if (response.ok) {
+            const select = document.getElementById('edit-categoria');
+            select.innerHTML = '';
+
+            categorias.filter(cat => cat.ativa).forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.nome;
+                option.textContent = categoria.nome;
+                if (categoria.nome === produtoEdicao.categoria) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar categorias:', error);
+    }
+}
+
+// Salvar edição do produto
+async function salvarEdicao() {
+    if (!produtoEdicao) return;
+
+    const dados = {
+        nome: document.getElementById('edit-nome').value,
+        descricao: document.getElementById('edit-descricao').value,
+        categoria: document.getElementById('edit-categoria').value,
+        fornecedor: document.getElementById('edit-fornecedor').value,
+        local_produto: document.getElementById('edit-local').value,
+        preco: parseFloat(document.getElementById('edit-preco').value),
+        ativo: document.getElementById('edit-status').value === 'true',
+        senha: document.getElementById('edit-senha').value
+    };
+
+    try {
+        const response = await fetch(`/api/produtos/${produtoEdicao.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dados)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showAlert('Produto atualizado com sucesso!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalEdicao')).hide();
+            carregarProdutos(); // Recarregar lista
+        } else {
+            showAlert('Erro: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Erro de conexão: ' + error.message, 'danger');
+    }
 }
 
 // Helper para mostrar alertas (exemplo, assumindo que você tem uma função para isso)

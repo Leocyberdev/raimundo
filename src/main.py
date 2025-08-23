@@ -41,6 +41,20 @@ with app.app_context():
         db.session.commit()
         print("Usuário admin master criado: Monter / almox")
 
+    # Criar funcionário padrão se não existir
+    from src.models.almoxarifado import Funcionario
+    funcionario_padrao = Funcionario.query.filter_by(id=1).first()
+    if not funcionario_padrao:
+        funcionario_padrao = Funcionario(
+            id=1,
+            nome='Sistema',
+            cargo='Operador do Sistema',
+            ativo=True
+        )
+        db.session.add(funcionario_padrao)
+        db.session.commit()
+        print("Funcionário padrão criado: Sistema")
+
     print("Banco de dados inicializado!")
 
 

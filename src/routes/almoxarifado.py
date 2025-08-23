@@ -186,6 +186,10 @@ def editar_produto(produto_id):
         produto.categoria = data.get('categoria', produto.categoria)
         produto.local_produto = data.get('local_produto', produto.local_produto)
         produto.preco = float(data.get('preco', produto.preco))
+        
+        # Atualizar status ativo/inativo
+        if 'ativo' in data:
+            produto.ativo = bool(data.get('ativo'))
 
         db.session.commit()
         return jsonify(produto.to_dict())
@@ -577,6 +581,31 @@ def listar_funcionarios():
     try:
         funcionarios = Funcionario.query.filter_by(ativo=True).all()
         return jsonify([func.to_dict() for func in funcionarios])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/usuario-logado')
+@login_required
+def usuario_logado():
+    """Obter informações do usuário logado"""
+    try:
+        from flask import session
+        from src.models.user import User
+        
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Usuário não logado'}), 401
+            
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'Usuário não encontrado'}), 404
+            
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'tipo_usuario': user.tipo_usuario
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
