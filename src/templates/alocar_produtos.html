@@ -927,6 +927,12 @@ function atualizarUltimasAlocacoes(alocacoes) {
         const unidadeFormatada = formatarUnidadeMedida(unidadeMedida);
         const quantidadeFormatada = formatarQuantidade(alocacao.quantidade, unidadeMedida);
 
+        // Obter nome do usuário/funcionário
+        let nomeUsuario = 'N/A';
+        if (alocacao.funcionario && alocacao.funcionario.nome) {
+            nomeUsuario = alocacao.funcionario.nome;
+        }
+
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-start">
                 <div style="flex: 1; min-width: 0;">
@@ -940,6 +946,7 @@ function atualizarUltimasAlocacoes(alocacoes) {
             </div>
             <div class="text-muted small mt-1">
                 <i class="bi bi-box-arrow-right"></i> ${quantidadeFormatada} → ${alocacao.obra ? alocacao.obra.numero_obra : 'N/A'}<br>
+                <i class="bi bi-person"></i> ${nomeUsuario}<br>
                 <i class="bi bi-currency-dollar"></i> ${formatCurrency(alocacao.valor_total)}
             </div>
         `;

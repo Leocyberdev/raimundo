@@ -194,6 +194,19 @@ class Movimentacao(db.Model):
             if 'unidade_medida' not in produto_dict or not produto_dict['unidade_medida']:
                 produto_dict['unidade_medida'] = 'unidade'
 
+        # Obter informações do funcionário ou usuário
+        funcionario_dict = None
+        if self.funcionario:
+            funcionario_dict = self.funcionario.to_dict()
+        else:
+            # Se não há funcionário cadastrado, mostrar informação do usuário do sistema
+            funcionario_dict = {
+                'id': self.funcionario_id,
+                'nome': 'Usuário do Sistema',
+                'cargo': 'Operador',
+                'ativo': True
+            }
+
         return {
             'id': self.id,
             'produto_id': self.produto_id,
@@ -207,5 +220,5 @@ class Movimentacao(db.Model):
             'observacoes': self.observacoes,
             'produto': produto_dict,
             'obra': self.obra.to_dict() if self.obra else None,
-            'funcionario': self.funcionario.to_dict() if self.funcionario else None
+            'funcionario': funcionario_dict
         }
