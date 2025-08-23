@@ -38,7 +38,7 @@ def login():
             return redirect('/producao')
     return render_template('login.html')
 
-@user_bp.route('/login', methods=['POST'])
+@user_bp.route('/api/login', methods=['POST'])
 def login_post():
     """Processar login"""
     try:
