@@ -342,7 +342,6 @@ def sugestoes_obras():
                 )
             )
         ).order_by(Obra.numero_obra).limit(10).all()
-</old_str>
 
         sugestoes = []
         for obra in obras:
