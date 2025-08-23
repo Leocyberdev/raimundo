@@ -153,6 +153,8 @@
             const filtroStatusSelect = document.getElementById("filtroStatus");
             const buscaObraInput = document.getElementById("buscaObra");
             const listaObrasDiv = document.getElementById("listaObras");
+            
+            try {
                 const status = filtroStatusSelect.value;
                 const busca = buscaObraInput.value;
                 let url = `/api/obras`;
