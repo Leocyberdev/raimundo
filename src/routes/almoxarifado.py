@@ -167,8 +167,9 @@ def criar_produto():
             fornecedor=data.get('fornecedor', ''),
             categoria=data['categoria'],
             local_produto=local_texto,
+            unidade_medida=data.get('unidade_medida', 'unidade'),
             preco=float(data.get('preco', 0)),
-            quantidade_estoque=int(data.get('quantidade_estoque', 0))
+            quantidade_estoque=float(data.get('quantidade_estoque', 0))
         )
 
         db.session.add(produto)

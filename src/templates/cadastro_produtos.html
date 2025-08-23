@@ -79,7 +79,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label for="preco" class="form-label">
                                 <i class="bi bi-currency-dollar"></i> Preço (R$)
                             </label>
@@ -88,12 +88,28 @@
                             <div class="form-text">Opcional - padrão R$ 0,00</div>
                         </div>
 
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
+                            <label for="unidade_medida" class="form-label">
+                                <i class="bi bi-rulers"></i> Unidade de Medida *
+                            </label>
+                            <select class="form-select" id="unidade_medida" name="unidade_medida" required>
+                                <option value="unidade">Unidade</option>
+                                <option value="kilo">Quilograma (Kg)</option>
+                                <option value="pacote">Pacote</option>
+                                <option value="metros">Metros (m)</option>
+                                <option value="cento">Cento</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
                             <label for="quantidade_estoque" class="form-label">
                                 <i class="bi bi-archive"></i> Quantidade Inicial
                             </label>
-                            <input type="number" class="form-control" id="quantidade_estoque" 
-                                   name="quantidade_estoque" min="0" value="0">
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="quantidade_estoque" 
+                                       name="quantidade_estoque" min="0" value="0" step="0.001">
+                                <span class="input-group-text" id="unidade-display">unidade(s)</span>
+                            </div>
                         </div>
                     </div>
 
@@ -160,6 +176,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Validação em tempo real do código
     document.getElementById('codigo').addEventListener('blur', validarCodigo);
+    
+    // Controle inteligente de unidades
+    configurarUnidadeMedida();
 });
 
 async function carregarCategorias() {
@@ -223,6 +242,11 @@ async function cadastrarProduto(event) {
 
     if (!produto.categoria) {
         showAlert('Categoria é obrigatória', 'warning');
+        return;
+    }
+    
+    if (!produto.unidade_medida) {
+        showAlert('Unidade de medida é obrigatória', 'warning');
         return;
     }
 
@@ -322,7 +346,7 @@ function atualizarTabelaProdutos(produtos) {
             <td>${formatCurrency(produto.preco)}</td>
             <td>
                 <span class="badge ${produto.quantidade_estoque > 0 ? 'bg-success' : 'bg-secondary'}">
-                    ${produto.quantidade_estoque}
+                    ${formatarQuantidade(produto.quantidade_estoque, produto.unidade_medida)}
                 </span>
             </td>
             <td>${formatDate(produto.data_cadastro)}</td>
@@ -332,12 +356,36 @@ function atualizarTabelaProdutos(produtos) {
     });
 }
 
+function formatarQuantidade(quantidade, unidade) {
+    const sufixos = {
+        'unidade': '',
+        'kilo': ' Kg',
+        'pacote': ' pct',
+        'metros': ' m',
+        'cento': ' cto'
+    };
+    
+    const sufixo = sufixos[unidade] || '';
+    
+    // Formatar número baseado na unidade
+    if (unidade === 'unidade' || unidade === 'pacote') {
+        return `${Math.floor(quantidade)}${sufixo}`;
+    } else {
+        return `${parseFloat(quantidade).toFixed(quantidade % 1 === 0 ? 0 : 3)}${sufixo}`;
+    }
+}
+
 function limparFormulario() {
     document.getElementById('form-produto').reset();
     document.getElementById('preco').value = '0.00';
     document.getElementById('quantidade_estoque').value = '0';
+    document.getElementById('unidade_medida').value = 'unidade';
     document.getElementById('localProduto').value = ''; // Limpa o campo de texto do autocomplete
     document.getElementById('localProdutoId').value = ''; // Limpa o ID do local
+    
+    // Reconfigurar unidade
+    configurarUnidadeMedida();
+    
     document.getElementById('codigo').focus();
 }
 
@@ -345,6 +393,69 @@ function limparFormulario() {
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('codigo').focus();
 });
+
+function configurarUnidadeMedida() {
+    const selectUnidade = document.getElementById('unidade_medida');
+    const inputQuantidade = document.getElementById('quantidade_estoque');
+    const unidadeDisplay = document.getElementById('unidade-display');
+    
+    // Configurações para cada unidade
+    const configUnidades = {
+        'unidade': {
+            step: '1',
+            min: '0',
+            sufixo: 'unidade(s)',
+            decimal: false
+        },
+        'kilo': {
+            step: '0.001',
+            min: '0',
+            sufixo: 'Kg',
+            decimal: true
+        },
+        'pacote': {
+            step: '1',
+            min: '0',
+            sufixo: 'pacote(s)',
+            decimal: false
+        },
+        'metros': {
+            step: '0.01',
+            min: '0',
+            sufixo: 'metros',
+            decimal: true
+        },
+        'cento': {
+            step: '0.01',
+            min: '0',
+            sufixo: 'cento(s)',
+            decimal: true
+        }
+    };
+    
+    function atualizarUnidade() {
+        const unidadeSelecionada = selectUnidade.value;
+        const config = configUnidades[unidadeSelecionada];
+        
+        if (config) {
+            inputQuantidade.step = config.step;
+            inputQuantidade.min = config.min;
+            unidadeDisplay.textContent = config.sufixo;
+            
+            // Ajustar valor atual se necessário
+            const valorAtual = parseFloat(inputQuantidade.value) || 0;
+            if (!config.decimal && valorAtual % 1 !== 0) {
+                inputQuantidade.value = Math.floor(valorAtual);
+            }
+        }
+    }
+    
+    // Evento para mudança de unidade
+    selectUnidade.addEventListener('change', atualizarUnidade);
+    
+    // Configurar estado inicial
+    atualizarUnidade();
+}
 
 
     // Autocomplete para locais

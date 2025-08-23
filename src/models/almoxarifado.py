@@ -63,8 +63,9 @@ class Produto(db.Model):
     fornecedor = db.Column(db.String(200))
     categoria = db.Column(db.String(20), nullable=False)  # Curva A, B, C
     local_produto = db.Column(db.String(100))
+    unidade_medida = db.Column(db.String(20), default='unidade')
     preco = db.Column(db.Float, default=0.0)
-    quantidade_estoque = db.Column(db.Integer, default=0)
+    quantidade_estoque = db.Column(db.Float, default=0.0)
     data_cadastro = db.Column(db.DateTime, default=lambda: datetime.now(SAO_PAULO_TZ))
     ativo = db.Column(db.Boolean, default=True)
 
@@ -83,6 +84,7 @@ class Produto(db.Model):
             'fornecedor': self.fornecedor,
             'categoria': self.categoria,
             'local_produto': self.local_produto,
+            'unidade_medida': self.unidade_medida,
             'preco': self.preco,
             'quantidade_estoque': self.quantidade_estoque,
             'data_cadastro': self.data_cadastro.isoformat() if self.data_cadastro else None,
@@ -175,7 +177,7 @@ class Movimentacao(db.Model):
     obra_id = db.Column(db.Integer, db.ForeignKey('obras.id'), nullable=True)
     funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=False)
     tipo_movimentacao = db.Column(db.String(20), nullable=False)  # ENTRADA, SAIDA, ALOCACAO
-    quantidade = db.Column(db.Integer, nullable=False)
+    quantidade = db.Column(db.Float, nullable=False)
     valor_unitario = db.Column(db.Float, default=0.0)
     valor_total = db.Column(db.Float, default=0.0)
     data_movimentacao = db.Column(db.DateTime, default=lambda: datetime.now(SAO_PAULO_TZ))
