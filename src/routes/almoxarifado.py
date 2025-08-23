@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, make_response
 from src.models.user import db
 from src.models.almoxarifado import (
     Produto, Categoria, Fornecedor,
-    Movimentacao, Obra, Local, db
+    Movimentacao, Obra, Local, Funcionario, db
 )
 from src.routes.user import login_required
 from datetime import datetime, timedelta
