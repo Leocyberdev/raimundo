@@ -219,6 +219,14 @@ def excluir_produto(produto_id):
             return jsonify({'error': 'Senha incorreta'}), 401
 
         produto = Produto.query.get_or_404(produto_id)
+
+        # Verificar se o produto tem movimentações/alocações
+        movimentacoes = Movimentacao.query.filter_by(produto_id=produto_id).count()
+        if movimentacoes > 0:
+            return jsonify({
+                'error': f'Não é possível excluir este produto. Ele possui {movimentacoes} movimentação(ões) registrada(s). Produtos com histórico de movimentações não podem ser excluídos por segurança.'
+            }), 400
+
         produto.ativo = False
 
         db.session.commit()
