@@ -642,50 +642,80 @@ function formatDate(dateString) {
 let produtoEdicao = null;
 
 // Função para editar produto
-function editarProduto(produtoId) {
+async function editarProduto(produtoId) {
     const produto = produtosCarregados.find(p => p.id === produtoId);
-    if (!produto) return;
+    if (!produto) {
+        showAlert('Produto não encontrado', 'error');
+        return;
+    }
 
     produtoEdicao = produto;
 
-    // Preencher formulário de edição
-    document.getElementById('edit-nome').value = produto.nome;
-    document.getElementById('edit-descricao').value = produto.descricao || '';
-    document.getElementById('edit-fornecedor').value = produto.fornecedor || '';
-    document.getElementById('edit-local').value = produto.local_produto || '';
-    document.getElementById('edit-preco').value = produto.preco;
-    document.getElementById('edit-status').value = produto.ativo.toString();
-    document.getElementById('edit-senha').value = '';
+    try {
+        // Preencher formulário de edição
+        document.getElementById('edit-nome').value = produto.nome || '';
+        document.getElementById('edit-descricao').value = produto.descricao || '';
+        document.getElementById('edit-fornecedor').value = produto.fornecedor || '';
+        document.getElementById('edit-local').value = produto.local_produto || '';
+        document.getElementById('edit-preco').value = produto.preco || 0;
+        document.getElementById('edit-status').value = produto.ativo ? 'true' : 'false';
+        document.getElementById('edit-senha').value = '';
 
-    // Carregar categorias no select de edição
-    carregarCategoriasEdicao();
+        // Carregar categorias no select de edição ANTES de mostrar o modal
+        await carregarCategoriasEdicao();
 
-    // Mostrar modal
-    new bootstrap.Modal(document.getElementById('modalEdicao')).show();
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalEdicao'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Erro ao abrir modal de edição:', error);
+        showAlert('Erro ao abrir formulário de edição', 'error');
+    }
 }
 
 // Carregar categorias para o select de edição
 async function carregarCategoriasEdicao() {
     try {
         const response = await fetch('/api/categorias');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const categorias = await response.json();
+        const select = document.getElementById('edit-categoria');
+        
+        if (!select) {
+            console.error('Elemento edit-categoria não encontrado');
+            return;
+        }
 
-        if (response.ok) {
-            const select = document.getElementById('edit-categoria');
-            select.innerHTML = '';
+        select.innerHTML = '<option value="">Selecione uma categoria...</option>';
 
+        if (categorias && categorias.length > 0) {
             categorias.filter(cat => cat.ativa).forEach(categoria => {
                 const option = document.createElement('option');
                 option.value = categoria.nome;
                 option.textContent = categoria.nome;
-                if (categoria.nome === produtoEdicao.categoria) {
+                
+                // Selecionar categoria atual do produto
+                if (produtoEdicao && categoria.nome === produtoEdicao.categoria) {
                     option.selected = true;
                 }
+                
                 select.appendChild(option);
             });
+        } else {
+            select.innerHTML = '<option value="">Nenhuma categoria disponível</option>';
         }
+        
     } catch (error) {
-        console.error('Erro ao carregar categorias:', error);
+        console.error('Erro ao carregar categorias para edição:', error);
+        const select = document.getElementById('edit-categoria');
+        if (select) {
+            select.innerHTML = '<option value="">Erro ao carregar categorias</option>';
+        }
     }
 }
 
@@ -727,16 +757,48 @@ async function salvarEdicao() {
     }
 }
 
-// Helper para mostrar alertas (exemplo, assumindo que você tem uma função para isso)
-function showAlert(message, type) {
-    const alertPlaceholder = document.createElement('div');
-    alertPlaceholder.innerHTML = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+// Helper para mostrar alertas
+function showAlert(message, type = 'info') {
+    // Mapear tipos de alerta
+    const typeMap = {
+        'error': 'danger',
+        'success': 'success',
+        'warning': 'warning',
+        'info': 'info',
+        'danger': 'danger'
+    };
+    
+    const alertType = typeMap[type] || 'info';
+    
+    // Criar container de alertas se não existir
+    let alertContainer = document.getElementById('alert-container');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alert-container';
+        alertContainer.style.position = 'fixed';
+        alertContainer.style.top = '20px';
+        alertContainer.style.right = '20px';
+        alertContainer.style.zIndex = '9999';
+        alertContainer.style.width = '400px';
+        document.body.appendChild(alertContainer);
+    }
+
+    // Criar alerta
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${alertType} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <strong>${type.charAt(0).toUpperCase() + type.slice(1)}:</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
-    document.getElementById('content').prepend(alertPlaceholder); // Adiciona no topo do conteúdo
+
+    alertContainer.appendChild(alertDiv);
+
+    // Remover alerta automaticamente após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
 
 </script>

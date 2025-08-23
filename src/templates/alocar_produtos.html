@@ -245,37 +245,57 @@ async function carregarObras() {
 
 async function carregarFuncionarios() {
     try {
-        // Carregar usuário logado
+        // Carregar usuário logado primeiro
         const userResponse = await fetch('/api/usuario-logado');
         const userData = await userResponse.json();
         
-        // Carregar funcionários
+        // Carregar funcionários cadastrados
         const response = await fetch('/api/funcionarios');
         const data = await response.json();
 
-        if (response.ok) {
-            funcionarios = data;
-            const select = document.getElementById('funcionario-select');
-            select.innerHTML = '<option value="">Selecione o funcionário</option>';
+        const select = document.getElementById('funcionario-select');
+        select.innerHTML = '';
 
-            // Adicionar usuário logado como primeira opção (se não estiver na lista de funcionários)
-            if (userResponse.ok) {
-                const usuarioLogadoOption = document.createElement('option');
-                usuarioLogadoOption.value = `user_${userData.id}`;
-                usuarioLogadoOption.textContent = `${userData.username} (Usuário Logado)`;
-                usuarioLogadoOption.selected = true; // Pré-selecionar
-                select.appendChild(usuarioLogadoOption);
-            }
+        // SEMPRE adicionar usuário logado como primeira opção e pré-selecioná-lo
+        if (userResponse.ok && userData.username) {
+            const usuarioLogadoOption = document.createElement('option');
+            usuarioLogadoOption.value = `user_${userData.id}`;
+            usuarioLogadoOption.textContent = `${userData.username} (Usuário Logado)`;
+            usuarioLogadoOption.selected = true; // Pré-selecionar sempre
+            select.appendChild(usuarioLogadoOption);
+        }
+
+        // Adicionar funcionários cadastrados como opções adicionais
+        if (response.ok && data.length > 0) {
+            funcionarios = data;
+            
+            // Adicionar separador visual
+            const separatorOption = document.createElement('option');
+            separatorOption.disabled = true;
+            separatorOption.textContent = '── Funcionários Cadastrados ──';
+            select.appendChild(separatorOption);
 
             funcionarios.forEach(funcionario => {
                 const option = document.createElement('option');
                 option.value = funcionario.id;
-                option.textContent = `${funcionario.nome} - ${funcionario.cargo}`;
+                option.textContent = `${funcionario.nome} - ${funcionario.cargo || 'Sem cargo'}`;
                 select.appendChild(option);
             });
+        } else {
+            // Se não houver funcionários cadastrados, só mostrar o usuário logado
+            funcionarios = [];
         }
+
+        // Atualizar resumo já com o usuário selecionado
+        atualizarResumo();
+        
     } catch (error) {
+        console.error('Erro ao carregar funcionários:', error);
         showAlert('Erro ao carregar funcionários: ' + error.message, 'danger');
+        
+        // Em caso de erro, pelo menos tentar carregar um funcionário padrão
+        const select = document.getElementById('funcionario-select');
+        select.innerHTML = '<option value="user_1" selected>Usuário do Sistema</option>';
     }
 }
 
@@ -434,12 +454,14 @@ function atualizarResumo() {
     
     // Determinar nome do funcionário
     let nomeFuncionario = '';
-    if (funcionarioSelect.startsWith('user_')) {
-        const option = document.querySelector(`option[value="${funcionarioSelect}"]`);
-        nomeFuncionario = option ? option.textContent : 'Usuário Logado';
-    } else {
-        const funcionario = funcionarios.find(f => f.id == funcionarioSelect);
-        nomeFuncionario = funcionario ? funcionario.nome : '';
+    if (funcionarioSelect) {
+        if (funcionarioSelect.startsWith('user_')) {
+            const option = document.querySelector(`option[value="${funcionarioSelect}"]`);
+            nomeFuncionario = option ? option.textContent : 'Usuário Logado';
+        } else {
+            const funcionario = funcionarios.find(f => f.id == funcionarioSelect);
+            nomeFuncionario = funcionario ? funcionario.nome : '';
+        }
     }
 
     const valorTotal = quantidade * produtoSelecionado.preco;
@@ -468,7 +490,18 @@ function mostrarModalConfirmacao() {
     const observacoes = document.getElementById('observacoes').value;
 
     const obra = obras.find(o => o.id == obraId);
-    const funcionario = funcionarios.find(f => f.id == funcionarioId);
+    const obra = obras.find(o => o.id == obraId);
+    
+    // Determinar nome do funcionário para a modal
+    let nomeFuncionarioModal = '';
+    if (funcionarioId.toString().startsWith('user_')) {
+        const option = document.querySelector(`option[value="${funcionarioId}"]`);
+        nomeFuncionarioModal = option ? option.textContent : 'Usuário Logado';
+    } else {
+        const funcionario = funcionarios.find(f => f.id == funcionarioId);
+        nomeFuncionarioModal = funcionario ? funcionario.nome : 'Funcionário não identificado';
+    }
+    
     const valorTotal = quantidade * produtoSelecionado.preco;
 
     const modalBody = document.getElementById('modal-confirmacao-body');
@@ -492,7 +525,7 @@ function mostrarModalConfirmacao() {
             </tr>
             <tr>
                 <td><strong>Funcionário:</strong></td>
-                <td>${funcionario.nome}</td>
+                <td>${nomeFuncionarioModal}</td>
             </tr>
             <tr>
                 <td><strong>Valor Total:</strong></td>
@@ -503,7 +536,7 @@ function mostrarModalConfirmacao() {
 
         <div class="alert alert-warning">
             <i class="bi bi-exclamation-triangle"></i>
-            Esta ação irá reduzir o estoque do produto de ${produtoSelecionado.estoque} para ${produtoSelecionado.estoque - quantidade} unidades.
+            Esta ação irá reduzir o estoque do produto de ${produtoSelecionado.quantidade_estoque || produtoSelecionado.estoque} para ${(produtoSelecionado.quantidade_estoque || produtoSelecionado.estoque) - quantidade} unidades.
         </div>
     `;
 
