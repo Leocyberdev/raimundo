@@ -22,7 +22,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label for="filtro-categoria" class="form-label">Categoria</label>
                         <select class="form-select" id="filtro-categoria">
                             <option value="">Todas as categorias</option>
@@ -30,7 +30,16 @@
                         </select>
                     </div>
 
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
+                        <label for="filtro-status" class="form-label">Status</label>
+                        <select class="form-select" id="filtro-status">
+                            <option value="">Todos</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
                         <label for="filtro-fornecedor" class="form-label">Fornecedor</label>
                         <div class="search-container">
                             <input type="text" class="form-control" id="filtroFornecedor" placeholder="Filtrar por fornecedor" autocomplete="off">
@@ -38,7 +47,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label for="busca-produto" class="form-label">Busca Inteligente</label>
                         <div class="search-container">
                             <input type="text" class="form-control" id="busca-produto"
@@ -97,6 +106,29 @@
             <div class="card-body text-center">
                 <h4 id="produtos-zerado">0</h4>
                 <p class="mb-0">Estoque Zerado</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico de Status do Estoque -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-bar-chart"></i> Visão Geral do Estoque
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="graficoStatus" width="400" height="200"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="graficoEstoque" width="400" height="200"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -243,17 +275,25 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+
+let produtoEdicao = null;
 let produtosCarregados = [];
 let produtoSelecionado = null;
 let paginaAtual = 1;
 const itensPorPagina = 20;
+
+// Variáveis para os gráficos
+let graficoStatus = null;
+let graficoEstoque = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     carregarProdutos();
     carregarCategorias();
     configurarBuscaInteligente();
     configurarBuscaFornecedor();
+    inicializarGraficos();
 });
 
 async function carregarCategorias() {
@@ -302,6 +342,7 @@ function aplicarFiltros() {
     const categoria = document.getElementById('filtro-categoria').value;
     const fornecedor = document.getElementById('filtroFornecedor').value.toLowerCase(); // Alterado para ler do novo input
     const busca = document.getElementById('busca-produto').value.toLowerCase();
+    const status = document.getElementById('filtro-status').value;
 
     let produtosFiltrados = produtosCarregados.filter(produto => {
         const matchCategoria = !categoria || produto.categoria.toLowerCase().includes(categoria.toLowerCase());
@@ -310,8 +351,9 @@ function aplicarFiltros() {
             produto.nome.toLowerCase().includes(busca) ||
             produto.codigo.toLowerCase().includes(busca) ||
             produto.descricao.toLowerCase().includes(busca);
+        const matchStatus = status === '' || (status === 'ativo' && produto.ativo) || (status === 'inativo' && !produto.ativo);
 
-        return matchCategoria && matchFornecedor && matchBusca;
+        return matchCategoria && matchFornecedor && matchBusca && matchStatus;
     });
 
     atualizarTabela(produtosFiltrados);
@@ -381,13 +423,16 @@ function atualizarTabela(produtos) {
 function atualizarResumo(produtos) {
     const total = produtos.length;
     const comEstoque = produtos.filter(p => p.quantidade_estoque > 0 && p.ativo).length;
-    const inativos = produtos.filter(p => !p.ativo).length;
+    const inativos = produtosCarregados.filter(p => !p.ativo).length; // Contar inativos do total carregado
     const zerado = produtos.filter(p => p.quantidade_estoque === 0 && p.ativo).length;
 
-    document.getElementById('total-produtos').textContent = total;
-    document.getElementById('produtos-estoque').textContent = comEstoque;
-    document.getElementById('produtos-inativos').textContent = inativos;
-    document.getElementById('produtos-zerado').textContent = zerado;
+    document.getElementById("total-produtos").textContent = total;
+    document.getElementById("produtos-estoque").textContent = comEstoque;
+    document.getElementById("produtos-inativos").textContent = inativos;
+    document.getElementById("produtos-zerado").textContent = zerado;
+    
+    // Atualizar gráficos
+    atualizarGraficos(total, comEstoque, inativos, zerado);
 }
 
 function atualizarContador(total) {
@@ -532,11 +577,12 @@ function irParaAlocacao() {
 }
 
 function limparFiltros() {
-    document.getElementById('filtro-categoria').value = '';
-    document.getElementById('filtroFornecedor').value = ''; // Limpar o novo input de fornecedor
-    document.getElementById('busca-produto').value = '';
-    document.getElementById('search-results').style.display = 'none';
-    document.getElementById('fornecedoresResults').style.display = 'none'; // Esconder resultados de fornecedor
+    document.getElementById("filtro-categoria").value = "";
+    document.getElementById("filtroFornecedor").value = "";
+    document.getElementById("busca-produto").value = "";
+    document.getElementById("filtro-status").value = ""; // Limpar o novo input de status
+    document.getElementById("search-results").style.display = "none";
+    document.getElementById("fornecedoresResults").style.display = "none";
     paginaAtual = 1;
     aplicarFiltros();
 }
@@ -638,8 +684,7 @@ function formatDate(dateString) {
     return date.toLocaleDateString('pt-BR');
 }
 
-// Variável global para produto em edição
-let produtoEdicao = null;
+
 
 // Função para editar produto
 async function editarProduto(produtoId) {
@@ -906,6 +951,87 @@ function showAlert(message, type = 'info') {
             alertDiv.remove();
         }
     }, 5000);
+}
+
+// Funções dos gráficos
+function inicializarGraficos() {
+    // Gráfico de Status (Pizza)
+    const ctxStatus = document.getElementById('graficoStatus').getContext('2d');
+    graficoStatus = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['Ativos', 'Inativos'],
+            datasets: [{
+                data: [0, 0],
+                backgroundColor: ['#28a745', '#ffc107'],
+                borderColor: ['#ffffff', '#ffffff'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Status dos Produtos'
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Gráfico de Estoque (Barras)
+    const ctxEstoque = document.getElementById('graficoEstoque').getContext('2d');
+    graficoEstoque = new Chart(ctxEstoque, {
+        type: 'bar',
+        data: {
+            labels: ['Com Estoque', 'Estoque Zerado', 'Inativos'],
+            datasets: [{
+                label: 'Quantidade de Produtos',
+                data: [0, 0, 0],
+                backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+                borderColor: ['#28a745', '#dc3545', '#ffc107'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Distribuição do Estoque'
+                },
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarGraficos(total, comEstoque, inativos, zerado) {
+    if (graficoStatus) {
+        const ativos = total - inativos;
+        graficoStatus.data.datasets[0].data = [ativos, inativos];
+        graficoStatus.update();
+    }
+
+    if (graficoEstoque) {
+        graficoEstoque.data.datasets[0].data = [comEstoque, zerado, inativos];
+        graficoEstoque.update();
+    }
 }
 
 </script>
