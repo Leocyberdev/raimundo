@@ -3,7 +3,7 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, render_template
 from flask_cors import CORS
 from src.models.user import db
 from src.models.almoxarifado import Produto, Obra, Funcionario, Movimentacao, Categoria, Fornecedor
@@ -42,6 +42,13 @@ def serve(path):
         else:
             return "index.html not found", 404
 
+@app.route('/gerenciamento')
+def gerenciamento():
+    return render_template('gerenciamento_obras.html')
+
+@app.route('/locais')
+def locais():
+    return render_template('gerenciamento_locais.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

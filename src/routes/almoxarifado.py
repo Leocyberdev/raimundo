@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, make_response
 from src.models.user import db
-from src.models.almoxarifado import Produto, Obra, Funcionario, Movimentacao, Categoria, Fornecedor
+from src.models.almoxarifado import (
+    Produto, Categoria, Fornecedor,
+    Movimentacao, Obra, Local, db
+)
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, and_
 
@@ -65,14 +68,14 @@ def dashboard_stats():
     try:
         # Últimas 10 movimentações
         ultimas_movimentacoes = db.session.query(Movimentacao).order_by(desc(Movimentacao.data_movimentacao)).limit(10).all()
-        
+
         # Total economizado no mês atual
         inicio_mes = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         economia_mes = db.session.query(func.sum(Movimentacao.valor_total)).filter(
             and_(Movimentacao.data_movimentacao >= inicio_mes,
                  Movimentacao.tipo_movimentacao == 'ALOCACAO')
         ).scalar() or 0
-        
+
         # Produtos mais movimentados (últimos 30 dias)
         data_limite = datetime.now() - timedelta(days=30)
         produtos_movimentados = db.session.query(
@@ -81,14 +84,14 @@ def dashboard_stats():
         ).join(Movimentacao).filter(
             Movimentacao.data_movimentacao >= data_limite
         ).group_by(Produto.id).order_by(desc('total_quantidade')).limit(5).all()
-        
+
         # Resumo por categoria
         resumo_categorias = db.session.query(
             Produto.categoria,
             func.count(Produto.id).label('total_produtos'),
             func.sum(Produto.quantidade_estoque).label('total_estoque')
         ).filter(Produto.ativo == True).group_by(Produto.categoria).all()
-        
+
         return jsonify({
             'ultimas_movimentacoes': [mov.to_dict() for mov in ultimas_movimentacoes],
             'economia_mes': float(economia_mes),
@@ -106,9 +109,9 @@ def listar_produtos():
         categoria = request.args.get('categoria')
         fornecedor = request.args.get('fornecedor')
         busca = request.args.get('busca')
-        
+
         query = Produto.query.filter(Produto.ativo == True)
-        
+
         if categoria:
             query = query.filter(Produto.categoria.ilike(f'%{categoria}%'))
         if fornecedor:
@@ -121,7 +124,7 @@ def listar_produtos():
                     Produto.descricao.ilike(f'%{busca}%')
                 )
             )
-        
+
         produtos = query.all()
         return jsonify([produto.to_dict() for produto in produtos])
     except Exception as e:
@@ -132,11 +135,11 @@ def criar_produto():
     """Criar novo produto"""
     try:
         data = request.get_json()
-        
+
         # Verificar se código já existe
         if Produto.query.filter_by(codigo=data['codigo']).first():
             return jsonify({'error': 'Código já existe'}), 400
-        
+
         produto = Produto(
             codigo=data['codigo'],
             nome=data['nome'],
@@ -147,10 +150,10 @@ def criar_produto():
             preco=float(data.get('preco', 0)),
             quantidade_estoque=int(data.get('quantidade_estoque', 0))
         )
-        
+
         db.session.add(produto)
         db.session.commit()
-        
+
         return jsonify(produto.to_dict()), 201
     except Exception as e:
         db.session.rollback()
@@ -161,20 +164,20 @@ def editar_produto(produto_id):
     """Editar produto (requer senha)"""
     try:
         data = request.get_json()
-        
+
         # Verificar senha
         if data.get('senha') != ADMIN_PASSWORD:
             return jsonify({'error': 'Senha incorreta'}), 401
-        
+
         produto = Produto.query.get_or_404(produto_id)
-        
+
         produto.nome = data.get('nome', produto.nome)
         produto.descricao = data.get('descricao', produto.descricao)
         produto.fornecedor = data.get('fornecedor', produto.fornecedor)
         produto.categoria = data.get('categoria', produto.categoria)
         produto.local_produto = data.get('local_produto', produto.local_produto)
         produto.preco = float(data.get('preco', produto.preco))
-        
+
         db.session.commit()
         return jsonify(produto.to_dict())
     except Exception as e:
@@ -186,14 +189,14 @@ def excluir_produto(produto_id):
     """Excluir produto (requer senha)"""
     try:
         data = request.get_json()
-        
+
         # Verificar senha
         if data.get('senha') != ADMIN_PASSWORD:
             return jsonify({'error': 'Senha incorreta'}), 401
-        
+
         produto = Produto.query.get_or_404(produto_id)
         produto.ativo = False
-        
+
         db.session.commit()
         return jsonify({'message': 'Produto excluído com sucesso'})
     except Exception as e:
@@ -205,15 +208,15 @@ def gerenciar_saldo(produto_id):
     """Adicionar ou retirar saldo (requer senha)"""
     try:
         data = request.get_json()
-        
+
         # Verificar senha
         if data.get('senha') != ADMIN_PASSWORD:
             return jsonify({'error': 'Senha incorreta'}), 401
-        
+
         produto = Produto.query.get_or_404(produto_id)
         operacao = data.get('operacao')  # 'adicionar' ou 'retirar'
         quantidade = int(data.get('quantidade', 0))
-        
+
         if operacao == 'adicionar':
             produto.quantidade_estoque += quantidade
         elif operacao == 'retirar':
@@ -222,7 +225,7 @@ def gerenciar_saldo(produto_id):
             produto.quantidade_estoque -= quantidade
         else:
             return jsonify({'error': 'Operação inválida'}), 400
-        
+
         # Registrar movimentação
         funcionario = Funcionario.query.first()  # Pegar primeiro funcionário como padrão
         movimentacao = Movimentacao(
@@ -234,10 +237,10 @@ def gerenciar_saldo(produto_id):
             valor_total=produto.preco * quantidade,
             observacoes=f'Ajuste de estoque - {operacao}'
         )
-        
+
         db.session.add(movimentacao)
         db.session.commit()
-        
+
         return jsonify(produto.to_dict())
     except Exception as e:
         db.session.rollback()
@@ -272,7 +275,7 @@ def listar_obras():
                 produto_info = mov.produto.to_dict()
                 produto_info["quantidade_alocada"] = mov.quantidade
                 produtos_alocados.append(produto_info)
-            
+
             obra_dict = obra.to_dict()
             obra_dict["produtos_alocados"] = produtos_alocados
             obras_com_produtos.append(obra_dict)
@@ -286,10 +289,10 @@ def sugestoes_obras():
     """Buscar sugestões de obras para autocomplete"""
     try:
         termo = request.args.get('termo', '').strip()
-        
+
         if not termo or len(termo) < 1:
             return jsonify([])
-        
+
         # Buscar obras que contenham o termo no nome ou número
         obras = Obra.query.filter(
             db.and_(
@@ -300,7 +303,7 @@ def sugestoes_obras():
                 )
             )
         ).order_by(Obra.numero_obra).limit(10).all()
-        
+
         sugestoes = []
         for obra in obras:
             sugestoes.append({
@@ -309,7 +312,7 @@ def sugestoes_obras():
                 'nome_obra': obra.nome_obra,
                 'texto_completo': f"{obra.numero_obra} - {obra.nome_obra}"
             })
-        
+
         return jsonify(sugestoes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -320,22 +323,22 @@ def alocar_produto():
     """Alocar produto em obra"""
     try:
         data = request.get_json()
-        
+
         produto = Produto.query.get_or_404(data['produto_id'])
         obra = Obra.query.get_or_404(data['obra_id'])
         quantidade = int(data['quantidade'])
         funcionario_id = data.get('funcionario_id', 1)
-        
+
         # Verificar estoque
         if produto.quantidade_estoque < quantidade:
             return jsonify({
                 'error': 'Estoque insuficiente',
                 'disponivel': produto.quantidade_estoque
             }), 400
-        
+
         # Atualizar estoque
         produto.quantidade_estoque -= quantidade
-        
+
         # Registrar movimentação
         movimentacao = Movimentacao(
             produto_id=produto.id,
@@ -347,10 +350,10 @@ def alocar_produto():
             valor_total=produto.preco * quantidade,
             observacoes=data.get('observacoes', '')
         )
-        
+
         db.session.add(movimentacao)
         db.session.commit()
-        
+
         return jsonify({
             'message': 'Produto alocado com sucesso',
             'movimentacao': movimentacao.to_dict()
@@ -368,7 +371,7 @@ def historico_movimentacoes():
         funcionario = request.args.get('funcionario')
         produto = request.args.get('produto')
         obra = request.args.get('obra')
-        
+
         # Calcular data limite baseada no período
         agora = datetime.now()
         if periodo == 'dia':
@@ -377,18 +380,18 @@ def historico_movimentacoes():
             data_limite = agora - timedelta(weeks=1)
         else:  # mes
             data_limite = agora - timedelta(days=30)
-        
+
         query = Movimentacao.query.filter(Movimentacao.data_movimentacao >= data_limite)
-        
+
         if funcionario:
             query = query.join(Funcionario).filter(Funcionario.nome.ilike(f'%{funcionario}%'))
         if produto:
             query = query.join(Produto).filter(Produto.codigo.ilike(f'%{produto}%'))
         if obra:
             query = query.join(Obra).filter(Obra.numero_obra.ilike(f'%{obra}%'))
-        
+
         movimentacoes = query.order_by(desc(Movimentacao.data_movimentacao)).limit(50).all()
-        
+
         return jsonify([mov.to_dict() for mov in movimentacoes])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -399,7 +402,7 @@ def produtos_mais_usados():
     """Produtos mais utilizados"""
     try:
         data_limite = datetime.now() - timedelta(days=30)
-        
+
         produtos = db.session.query(
             Produto.nome,
             Produto.codigo,
@@ -409,7 +412,7 @@ def produtos_mais_usados():
             Movimentacao.data_movimentacao >= data_limite,
             Movimentacao.tipo_movimentacao == 'ALOCACAO'
         ).group_by(Produto.id).order_by(desc('total_quantidade')).limit(10).all()
-        
+
         return jsonify([{
             'nome': p[0],
             'codigo': p[1],
@@ -424,7 +427,7 @@ def estatisticas_funcionarios():
     """Estatísticas por funcionário"""
     try:
         data_limite = datetime.now() - timedelta(days=30)
-        
+
         funcionarios = db.session.query(
             Funcionario.nome,
             func.count(Movimentacao.id).label('total_movimentacoes'),
@@ -432,7 +435,7 @@ def estatisticas_funcionarios():
         ).join(Movimentacao).filter(
             Movimentacao.data_movimentacao >= data_limite
         ).group_by(Funcionario.id).order_by(desc('total_movimentacoes')).all()
-        
+
         return jsonify([{
             'nome': f[0],
             'movimentacoes': int(f[1]),
@@ -449,13 +452,13 @@ def economia_total():
         economia_total = db.session.query(func.sum(Movimentacao.valor_total)).filter(
             Movimentacao.tipo_movimentacao == 'ALOCACAO'
         ).scalar() or 0
-        
+
         # Economia por mês (últimos 12 meses)
         economia_mensal = []
         for i in range(12):
             data_inicio = (datetime.now().replace(day=1) - timedelta(days=30*i)).replace(day=1)
             data_fim = (data_inicio + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-            
+
             valor = db.session.query(func.sum(Movimentacao.valor_total)).filter(
                 and_(
                     Movimentacao.data_movimentacao >= data_inicio,
@@ -463,12 +466,12 @@ def economia_total():
                     Movimentacao.tipo_movimentacao == 'ALOCACAO'
                 )
             ).scalar() or 0
-            
+
             economia_mensal.append({
                 'mes': data_inicio.strftime('%Y-%m'),
                 'valor': float(valor)
             })
-        
+
         return jsonify({
             'economia_total': float(economia_total),
             'economia_mensal': list(reversed(economia_mensal))
@@ -484,7 +487,7 @@ def busca_produtos():
         termo = request.args.get('q', '')
         if len(termo) < 2:
             return jsonify([])
-        
+
         produtos = Produto.query.filter(
             and_(
                 Produto.ativo == True,
@@ -494,7 +497,7 @@ def busca_produtos():
                 )
             )
         ).limit(10).all()
-        
+
         return jsonify([{
             'id': p.id,
             'codigo': p.codigo,
@@ -531,29 +534,29 @@ def criar_categoria():
     """Criar nova categoria"""
     try:
         data = request.get_json()
-        
+
         # Validar dados
         nome = data.get('nome', '').strip()
         if not nome:
             return jsonify({'error': 'Nome da categoria é obrigatório'}), 400
-        
+
         # Verificar se categoria já existe (case insensitive)
         categoria_existente = Categoria.query.filter(
             func.lower(Categoria.nome) == func.lower(nome)
         ).first()
-        
+
         if categoria_existente:
             return jsonify({'error': 'Categoria já existe'}), 400
-        
+
         # Criar nova categoria
         categoria = Categoria(
             nome=nome,
             descricao=data.get('descricao', '').strip()
         )
-        
+
         db.session.add(categoria)
         db.session.commit()
-        
+
         return jsonify(categoria.to_dict()), 201
     except Exception as e:
         db.session.rollback()
@@ -564,18 +567,18 @@ def editar_categoria(categoria_id):
     """Editar categoria existente"""
     try:
         data = request.get_json()
-        
+
         # Verificar senha
         if data.get('senha') != ADMIN_PASSWORD:
             return jsonify({'error': 'Senha incorreta'}), 401
-        
+
         categoria = Categoria.query.get_or_404(categoria_id)
-        
+
         # Validar nome
         nome = data.get('nome', '').strip()
         if not nome:
             return jsonify({'error': 'Nome da categoria é obrigatório'}), 400
-        
+
         # Verificar se outro categoria já tem esse nome
         categoria_existente = Categoria.query.filter(
             and_(
@@ -583,14 +586,14 @@ def editar_categoria(categoria_id):
                 Categoria.id != categoria_id
             )
         ).first()
-        
+
         if categoria_existente:
             return jsonify({'error': 'Já existe uma categoria com esse nome'}), 400
-        
+
         # Atualizar categoria
         categoria.nome = nome
         categoria.descricao = data.get('descricao', '').strip()
-        
+
         db.session.commit()
         return jsonify(categoria.to_dict())
     except Exception as e:
@@ -602,24 +605,24 @@ def excluir_categoria(categoria_id):
     """Excluir categoria (desativar)"""
     try:
         data = request.get_json()
-        
+
         # Verificar senha
         if data.get('senha') != ADMIN_PASSWORD:
             return jsonify({'error': 'Senha incorreta'}), 401
-        
+
         categoria = Categoria.query.get_or_404(categoria_id)
-        
+
         # Verificar se há produtos usando esta categoria
         produtos_usando = Produto.query.filter_by(categoria=categoria.nome, ativo=True).count()
         if produtos_usando > 0:
             return jsonify({
                 'error': f'Não é possível excluir. Existem {produtos_usando} produtos usando esta categoria.'
             }), 400
-        
+
         # Desativar categoria
         categoria.ativa = False
         db.session.commit()
-        
+
         return jsonify({'message': 'Categoria excluída com sucesso'})
     except Exception as e:
         db.session.rollback()
@@ -631,17 +634,17 @@ def validar_nome_categoria():
     try:
         nome = request.args.get('nome', '').strip()
         categoria_id = request.args.get('id', type=int)
-        
+
         if not nome:
             return jsonify({'valido': True})
-        
+
         query = Categoria.query.filter(func.lower(Categoria.nome) == func.lower(nome))
-        
+
         if categoria_id:
             query = query.filter(Categoria.id != categoria_id)
-        
+
         categoria_existente = query.first()
-        
+
         return jsonify({
             'valido': categoria_existente is None,
             'mensagem': 'Nome já existe' if categoria_existente else 'Nome disponível'
@@ -665,26 +668,26 @@ def criar_fornecedor():
     """Criar novo fornecedor"""
     try:
         data = request.get_json()
-        
+
         # Validar dados
         nome = data.get('nome', '').strip()
         if not nome:
             return jsonify({'error': 'Nome do fornecedor é obrigatório'}), 400
-        
+
         # Verificar se fornecedor já existe (case insensitive)
         fornecedor_existente = Fornecedor.query.filter(
             func.lower(Fornecedor.nome) == func.lower(nome)
         ).first()
-        
+
         if fornecedor_existente:
             return jsonify({'error': 'Fornecedor já existe'}), 400
-        
+
         # Criar novo fornecedor
         fornecedor = Fornecedor(nome=nome)
-        
+
         db.session.add(fornecedor)
         db.session.commit()
-        
+
         return jsonify(fornecedor.to_dict()), 201
     except Exception as e:
         db.session.rollback()
@@ -695,18 +698,18 @@ def editar_fornecedor(fornecedor_id):
     """Editar fornecedor existente"""
     try:
         data = request.get_json()
-        
+
         # Verificar senha
         if data.get('senha') != ADMIN_PASSWORD:
             return jsonify({'error': 'Senha incorreta'}), 401
-        
+
         fornecedor = Fornecedor.query.get_or_404(fornecedor_id)
-        
+
         # Validar nome
         nome = data.get('nome', '').strip()
         if not nome:
             return jsonify({'error': 'Nome do fornecedor é obrigatório'}), 400
-        
+
         # Verificar se outro fornecedor já tem esse nome
         fornecedor_existente = Fornecedor.query.filter(
             and_(
@@ -714,13 +717,13 @@ def editar_fornecedor(fornecedor_id):
                 Fornecedor.id != fornecedor_id
             )
         ).first()
-        
+
         if fornecedor_existente:
             return jsonify({'error': 'Já existe um fornecedor com esse nome'}), 400
-        
+
         # Atualizar fornecedor
         fornecedor.nome = nome
-        
+
         db.session.commit()
         return jsonify(fornecedor.to_dict())
     except Exception as e:
@@ -732,24 +735,24 @@ def excluir_fornecedor(fornecedor_id):
     """Excluir fornecedor (desativar)"""
     try:
         data = request.get_json()
-        
+
         # Verificar senha
         if data.get('senha') != ADMIN_PASSWORD:
             return jsonify({'error': 'Senha incorreta'}), 401
-        
+
         fornecedor = Fornecedor.query.get_or_404(fornecedor_id)
-        
+
         # Verificar se há produtos usando este fornecedor
         produtos_usando = Produto.query.filter_by(fornecedor=fornecedor.nome, ativo=True).count()
         if produtos_usando > 0:
             return jsonify({
                 'error': f'Não é possível excluir. Existem {produtos_usando} produtos usando este fornecedor.'
             }), 400
-        
+
         # Desativar fornecedor
         fornecedor.ativo = False
         db.session.commit()
-        
+
         return jsonify({'message': 'Fornecedor excluído com sucesso'})
     except Exception as e:
         db.session.rollback()
@@ -761,17 +764,17 @@ def validar_nome_fornecedor():
     try:
         nome = request.args.get('nome', '').strip()
         fornecedor_id = request.args.get('id', type=int)
-        
+
         if not nome:
             return jsonify({'valido': True})
-        
+
         query = Fornecedor.query.filter(func.lower(Fornecedor.nome) == func.lower(nome))
-        
+
         if fornecedor_id:
             query = query.filter(Fornecedor.id != fornecedor_id)
-        
+
         fornecedor_existente = query.first()
-        
+
         return jsonify({
             'valido': fornecedor_existente is None,
             'mensagem': 'Nome já existe' if fornecedor_existente else 'Nome disponível'
@@ -788,32 +791,30 @@ def exportar_estoque():
     try:
         # Buscar todos os produtos ativos
         produtos = Produto.query.filter_by(ativo=True).order_by(Produto.codigo).all()
-        
+
         # Criar conteúdo CSV
         csv_content = "Código,Nome,Categoria,Fornecedor,Local,Preço,Estoque,Valor Total,Data Cadastro\n"
-        
+
         for produto in produtos:
             valor_total = produto.preco * produto.quantidade_estoque
             data_cadastro = produto.data_cadastro.strftime('%d/%m/%Y %H:%M') if produto.data_cadastro else ''
-            
+
             # Escapar vírgulas nos campos de texto
             nome = produto.nome.replace(',', ';') if produto.nome else ''
             fornecedor = produto.fornecedor.replace(',', ';') if produto.fornecedor else ''
             local = produto.local_produto.replace(',', ';') if produto.local_produto else ''
-            
+
             csv_content += f"{produto.codigo},{nome},{produto.categoria},{fornecedor},{local},{produto.preco:.2f},{produto.quantidade_estoque},{valor_total:.2f},{data_cadastro}\n"
-        
+
         # Criar resposta com arquivo CSV
         response = make_response(csv_content)
         response.headers['Content-Type'] = 'text/csv; charset=utf-8'
         response.headers['Content-Disposition'] = f'attachment; filename=estoque_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-        
+
         return response
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
 
 
 # Obras APIs
@@ -897,6 +898,97 @@ def excluir_obra(obra_id):
         return jsonify({"error": str(e)}), 500
 
 
+# Rotas para Locais
+@almoxarifado_bp.route('/locais', methods=['GET'])
+def get_locais():
+    try:
+        locais = Local.query.filter_by(ativo=True).order_by(Local.nome_local).all()
+        return jsonify([local.to_dict() for local in locais])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
+@almoxarifado_bp.route('/locais', methods=['POST'])
+def create_local():
+    try:
+        data = request.get_json()
 
+        # Validar dados obrigatórios
+        if not data.get('nome_local'):
+            return jsonify({'error': 'Nome do local é obrigatório'}), 400
 
+        # Validar se posição contém apenas números, pontos e hífens
+        posicao = data.get('posicao', '').strip()
+        if posicao:
+            import re
+            if not re.match(r'^[0-9.\-]+$', posicao):
+                return jsonify({'error': 'Posição deve conter apenas números, pontos (.) e hífens (-)'}), 400
+
+        # Verificar se já existe local com mesmo nome
+        local_existente = Local.query.filter_by(nome_local=data['nome_local'], ativo=True).first()
+        if local_existente:
+            return jsonify({'error': 'Já existe um local com este nome'}), 400
+
+        novo_local = Local(
+            nome_local=data['nome_local'],
+            posicao=posicao if posicao else None,
+            descricao=data.get('descricao', '')
+        )
+
+        db.session.add(novo_local)
+        db.session.commit()
+
+        return jsonify(novo_local.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/locais/<int:local_id>', methods=['PUT'])
+def update_local(local_id):
+    try:
+        local = Local.query.get_or_404(local_id)
+        data = request.get_json()
+
+        # Validar dados obrigatórios
+        if not data.get('nome_local'):
+            return jsonify({'error': 'Nome do local é obrigatório'}), 400
+
+        # Validar se posição contém apenas números, pontos e hífens
+        posicao = data.get('posicao', '').strip()
+        if posicao:
+            import re
+            if not re.match(r'^[0-9.\-]+$', posicao):
+                return jsonify({'error': 'Posição deve conter apenas números, pontos (.) e hífens (-)'}), 400
+
+        # Verificar se já existe outro local com mesmo nome
+        local_existente = Local.query.filter(
+            Local.nome_local == data['nome_local'],
+            Local.id != local_id,
+            Local.ativo == True
+        ).first()
+        if local_existente:
+            return jsonify({'error': 'Já existe outro local com este nome'}), 400
+
+        local.nome_local = data['nome_local']
+        local.posicao = posicao if posicao else None
+        local.descricao = data.get('descricao', '')
+
+        db.session.commit()
+
+        return jsonify(local.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/locais/<int:local_id>', methods=['DELETE'])
+def delete_local(local_id):
+    try:
+        local = Local.query.get_or_404(local_id)
+
+        # Soft delete - marcar como inativo
+        local.ativo = False
+        db.session.commit()
+
+        return jsonify({'message': 'Local excluído com sucesso'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

@@ -89,6 +89,30 @@ class Produto(db.Model):
             'ativo': self.ativo
         }
 
+class Local(db.Model):
+    __tablename__ = 'locais'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome_local = db.Column(db.String(100), unique=True, nullable=False)  # Ex: Rua 4
+    posicao = db.Column(db.String(50), nullable=True)  # Ex: 1.5, 2-A, 3.2-B (números, pontos e hífens)
+    descricao = db.Column(db.Text)
+    ativo = db.Column(db.Boolean, default=True)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Local {self.nome_local}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome_local': self.nome_local,
+            'posicao': self.posicao,
+            'descricao': self.descricao,
+            'ativo': self.ativo,
+            'data_criacao': self.data_criacao.isoformat() if self.data_criacao else None
+        }
+
+
 class Obra(db.Model):
     __tablename__ = 'obras'
     

@@ -14,7 +14,25 @@ def populate_database(app):
         # Limpar dados existentes
         db.drop_all()
         db.create_all()
-        
+
+        # Criar alguns locais de exemplo
+        from src.models.almoxarifado import Local
+
+        if Local.query.count() == 0:
+            locais_exemplo = [
+                Local(nome_local="Rua 1", posicao="1.1", descricao="Primeira rua do almoxarifado"),
+                Local(nome_local="Rua 2", posicao="2.1", descricao="Segunda rua do almoxarifado"),
+                Local(nome_local="Rua 3", posicao="3.1", descricao="Terceira rua do almoxarifado"),
+                Local(nome_local="Rua 4", posicao="4.1", descricao="Quarta rua do almoxarifado"),
+                Local(nome_local="Setor A", posicao="A.1-B", descricao="Setor especial para materiais frágeis"),
+                Local(nome_local="Galpão 1", posicao="G1.2-3", descricao="Galpão para materiais grandes")
+            ]
+
+            for local in locais_exemplo:
+                db.session.add(local)
+
+        db.session.commit()
+
         # Criar categorias padrão
         categorias = [
             Categoria(nome='Curva A', descricao='Produtos de alta rotatividade e alto valor'),
@@ -24,10 +42,10 @@ def populate_database(app):
             Categoria(nome='Ferramentas', descricao='Ferramentas manuais e equipamentos'),
             Categoria(nome='Acabamento', descricao='Materiais de acabamento e pintura')
         ]
-        
+
         for categoria in categorias:
             db.session.add(categoria)
-        
+
         # Criar fornecedores padrão
         fornecedores = [
             Fornecedor(nome='Construtora ABC'),
@@ -37,10 +55,10 @@ def populate_database(app):
             Fornecedor(nome='Acabamentos Premium'),
             Fornecedor(nome='Distribuidora Norte')
         ]
-        
+
         for fornecedor in fornecedores:
             db.session.add(fornecedor)
-        
+
         # Criar funcionários
         funcionarios = [
             Funcionario(nome='João Silva', cargo='Almoxarife'),
@@ -48,10 +66,10 @@ def populate_database(app):
             Funcionario(nome='Pedro Oliveira', cargo='Supervisor'),
             Funcionario(nome='Ana Costa', cargo='Técnico')
         ]
-        
+
         for funcionario in funcionarios:
             db.session.add(funcionario)
-        
+
         # Criar obras
         obras = [
             Obra(numero_obra='OB001', nome_obra='Construção Edifício Central', 
@@ -63,10 +81,10 @@ def populate_database(app):
             Obra(numero_obra='OB004', nome_obra='Residencial Jardins', 
                  descricao='Conjunto residencial', data_inicio=date(2024, 1, 20), ativa=False)
         ]
-        
+
         for obra in obras:
             db.session.add(obra)
-        
+
         # Criar produtos
         produtos = [
             Produto(codigo='P001', nome='Cimento Portland CP-II', descricao='Saco 50kg', 
@@ -100,13 +118,13 @@ def populate_database(app):
                    fornecedor='Cabos Elétricos', categoria='Curva C', local_produto='I1-01', 
                    preco=125.00, quantidade_estoque=25)
         ]
-        
+
         for produto in produtos:
             db.session.add(produto)
-        
+
         # Commit para gerar IDs
         db.session.commit()
-        
+
         # Criar algumas movimentações de exemplo
         movimentacoes = [
             Movimentacao(produto_id=1, obra_id=1, funcionario_id=1, tipo_movimentacao='ALOCACAO',
@@ -130,18 +148,17 @@ def populate_database(app):
                         data_movimentacao=SAO_PAULO_TZ.localize(datetime(2024, 8, 19, 16, 10)),
                         observacoes='Tinta para acabamento')
         ]
-        
+
         for movimentacao in movimentacoes:
             db.session.add(movimentacao)
             # Atualizar estoque do produto
             produto = Produto.query.get(movimentacao.produto_id)
             if produto:
                 produto.quantidade_estoque -= movimentacao.quantidade
-        
+
         db.session.commit()
         print("Banco de dados populado com sucesso!")
 
 if __name__ == '__main__':
     from src.main import app
     populate_database(app)
-
