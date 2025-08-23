@@ -446,7 +446,7 @@ function criarGraficosAdicionais(produtos) {
     const valoresObras = obras.map(() => Math.random() * 10000 + 5000);
     
     graficoObras = new Chart(ctxObras, {
-        type: 'horizontalBar',
+        type: 'bar',
         data: {
             labels: obras,
             datasets: [{
