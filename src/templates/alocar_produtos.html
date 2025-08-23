@@ -214,26 +214,88 @@
     background: white;
     border: 1px solid #ddd;
     border-top: none;
-    max-height: 300px;
+    border-radius: 0 0 8px 8px;
+    max-height: 400px;
     overflow-y: auto;
     z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     display: none;
 }
 
 .search-item {
-    padding: 10px;
+    padding: 12px;
     border-bottom: 1px solid #eee;
     cursor: pointer;
     background: white;
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
 }
 
-.search-item:hover {
-    background-color: #f8f9fa !important;
+.search-item:hover,
+.search-item.selected {
+    background-color: #e3f2fd !important;
+    transform: translateX(2px);
 }
 
 .search-item:last-child {
     border-bottom: none;
+    border-radius: 0 0 8px 8px;
+}
+
+.search-item.text-muted,
+.search-item.text-danger {
+    cursor: default;
+    background-color: #f8f9fa !important;
+    transform: none !important;
+}
+
+.search-item.text-muted:hover,
+.search-item.text-danger:hover {
+    background-color: #f8f9fa !important;
+    transform: none !important;
+}
+
+.search-results::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-results::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Melhorar o input de busca */
+#busca-produto:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Indicador de busca ativa */
+.search-container.searching::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0d6efd;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
 }
 </style>
 {% endblock %}
@@ -365,29 +427,62 @@ function configurarBuscaInteligente() {
         // Limpar timeout anterior
         clearTimeout(timeoutId);
 
-        if (termo.length < 2) {
+        if (termo.length < 1) {  // Reduzir para 1 caractere
             results.style.display = 'none';
             results.innerHTML = '';
             return;
         }
 
-        // Debounce - aguardar 300ms antes de fazer a busca
+        // Mostrar indicador de carregamento
+        results.innerHTML = '<div class="search-item text-muted"><i class="bi bi-search"></i> Buscando...</div>';
+        results.style.display = 'block';
+
+        // Debounce - aguardar 200ms para melhor responsividade
         timeoutId = setTimeout(async () => {
             try {
+                console.log('Buscando produtos com termo:', termo);
                 const response = await fetch(`/api/busca/produtos?q=${encodeURIComponent(termo)}`);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const produtos = await response.json();
+                console.log('Produtos encontrados:', produtos);
                 mostrarResultadosBusca(produtos);
             } catch (error) {
                 console.error('Erro na busca:', error);
-                results.innerHTML = '<div class="search-item text-danger">Erro na busca</div>';
+                results.innerHTML = '<div class="search-item text-danger"><i class="bi bi-exclamation-triangle"></i> Erro na busca - Tente novamente</div>';
                 results.style.display = 'block';
             }
-        }, 300);
+        }, 200);
+    });
+
+    // Navegação com teclado
+    input.addEventListener('keydown', function(e) {
+        const items = results.querySelectorAll('.search-item:not(.text-muted):not(.text-danger)');
+        let currentIndex = Array.from(items).findIndex(item => item.classList.contains('selected'));
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (currentIndex < items.length - 1) {
+                if (currentIndex >= 0) items[currentIndex].classList.remove('selected');
+                items[currentIndex + 1].classList.add('selected');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (currentIndex > 0) {
+                items[currentIndex].classList.remove('selected');
+                items[currentIndex - 1].classList.add('selected');
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentIndex >= 0) {
+                items[currentIndex].click();
+            }
+        } else if (e.key === 'Escape') {
+            results.style.display = 'none';
+        }
     });
 
     // Fechar resultados ao clicar fora
@@ -397,10 +492,10 @@ function configurarBuscaInteligente() {
         }
     });
 
-    // Fechar ao pressionar ESC
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            results.style.display = 'none';
+    // Reabrir resultados ao focar no input se há texto
+    input.addEventListener('focus', function() {
+        if (this.value.trim().length >= 1 && results.children.length > 0) {
+            results.style.display = 'block';
         }
     });
 }
@@ -410,7 +505,7 @@ function mostrarResultadosBusca(produtos) {
     results.innerHTML = '';
 
     if (!produtos || produtos.length === 0) {
-        results.innerHTML = '<div class="search-item text-muted">Nenhum produto encontrado</div>';
+        results.innerHTML = '<div class="search-item text-muted"><i class="bi bi-search"></i> Nenhum produto encontrado</div>';
         results.style.display = 'block';
         return;
     }
@@ -419,48 +514,65 @@ function mostrarResultadosBusca(produtos) {
     const produtosAtivos = produtos.filter(produto => produto.ativo !== false);
 
     if (produtosAtivos.length === 0) {
-        results.innerHTML = '<div class="search-item text-muted">Nenhum produto ativo encontrado</div>';
+        results.innerHTML = '<div class="search-item text-muted"><i class="bi bi-exclamation-circle"></i> Nenhum produto ativo encontrado</div>';
         results.style.display = 'block';
         return;
     }
 
-    produtosAtivos.forEach(produto => {
+    produtosAtivos.forEach((produto, index) => {
         const item = document.createElement('div');
         item.className = 'search-item';
         item.style.cursor = 'pointer';
-        item.style.padding = '10px';
+        item.style.padding = '12px';
         item.style.borderBottom = '1px solid #eee';
+        item.style.transition = 'background-color 0.2s ease';
 
         const estoque = produto.quantidade_estoque || produto.estoque || 0;
         
         let statusEstoque;
+        let statusClass = '';
         if (estoque === 0) {
-            statusEstoque = '<span class="badge bg-warning">Sem estoque</span>';
+            statusEstoque = '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Sem estoque</span>';
+            statusClass = 'border-warning';
+        } else if (estoque <= 5) {
+            statusEstoque = `<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Estoque baixo: ${estoque}</span>`;
+            statusClass = 'border-warning';
         } else {
-            statusEstoque = `<span class="badge bg-success">Estoque: ${estoque}</span>`;
+            statusEstoque = `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Estoque: ${estoque}</span>`;
+            statusClass = 'border-success';
         }
 
+        item.className += ` ${statusClass}`;
+        item.style.borderLeft = `4px solid ${estoque === 0 ? '#ffc107' : estoque <= 5 ? '#ffc107' : '#198754'}`;
+
         item.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>${produto.codigo || 'N/A'}</strong> - ${produto.nome || 'N/A'}<br>
+            <div class="d-flex justify-content-between align-items-start">
+                <div style="flex: 1; min-width: 0;">
+                    <div class="fw-bold text-primary">${produto.codigo || 'N/A'}</div>
+                    <div class="text-dark mb-1">${produto.nome || 'N/A'}</div>
                     <small class="text-muted">
-                        ${produto.categoria || 'Sem categoria'} | 
-                        Preço: ${formatCurrency(produto.preco || 0)}
-                        ${produto.local_produto ? ' | Local: ' + produto.local_produto : ''}
+                        <i class="bi bi-tag"></i> ${produto.categoria || 'Sem categoria'} | 
+                        <i class="bi bi-currency-dollar"></i> ${formatCurrency(produto.preco || 0)}
+                        ${produto.local_produto ? ' | <i class="bi bi-geo-alt"></i> ' + produto.local_produto : ''}
                     </small>
                 </div>
-                <div>${statusEstoque}</div>
+                <div class="text-end ms-2">
+                    ${statusEstoque}
+                </div>
             </div>
         `;
 
         // Hover effects
         item.addEventListener('mouseenter', function() {
-            this.style.backgroundColor = '#f8f9fa';
+            this.classList.add('selected');
+            this.style.backgroundColor = '#e3f2fd';
+            this.style.transform = 'translateX(2px)';
         });
         
         item.addEventListener('mouseleave', function() {
+            this.classList.remove('selected');
             this.style.backgroundColor = 'white';
+            this.style.transform = 'translateX(0)';
         });
 
         item.addEventListener('click', function() {
@@ -468,12 +580,29 @@ function mostrarResultadosBusca(produtos) {
             selecionarProduto(produto);
             document.getElementById('busca-produto').value = `${produto.codigo} - ${produto.nome}`;
             results.style.display = 'none';
+            
+            // Feedback visual
+            showAlert(`Produto "${produto.nome}" selecionado com sucesso!`, 'success');
         });
 
         results.appendChild(item);
     });
 
     results.style.display = 'block';
+    
+    // Auto-selecionar primeiro item se houver apenas um resultado exato
+    if (produtosAtivos.length === 1) {
+        const searchTerm = document.getElementById('busca-produto').value.trim();
+        const produto = produtosAtivos[0];
+        if (produto.codigo && produto.codigo.toLowerCase() === searchTerm.toLowerCase()) {
+            // Se o código digitado é exato, selecionar automaticamente
+            setTimeout(() => {
+                if (results.style.display === 'block') {
+                    results.children[0].click();
+                }
+            }, 500);
+        }
+    }
 }
 
 function selecionarProduto(produto) {

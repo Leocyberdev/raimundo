@@ -560,20 +560,31 @@ def buscar_produtos():
     """Busca inteligente de produtos - apenas produtos ativos"""
     termo = request.args.get('q', '').strip()
 
-    if len(termo) < 2:
+    if len(termo) < 1:  # Reduzir para 1 caractere para melhor experiência
         return jsonify([])
 
     try:
+        # Busca mais inteligente - priorizar busca por código exato primeiro
         produtos = Produto.query.filter(
             db.and_(
-                Produto.ativo == True,  # Garantir que só busque produtos ativos
+                Produto.ativo == True,
                 db.or_(
-                    Produto.codigo.ilike(f'%{termo}%'),
-                    Produto.nome.ilike(f'%{termo}%'),
-                    Produto.descricao.ilike(f'%{termo}%')
+                    Produto.codigo.ilike(f'{termo}%'),  # Código que começa com o termo
+                    Produto.codigo.ilike(f'%{termo}%'),  # Código que contém o termo
+                    Produto.nome.ilike(f'%{termo}%'),    # Nome que contém o termo
+                    Produto.descricao.ilike(f'%{termo}%')  # Descrição que contém o termo
                 )
             )
-        ).order_by(Produto.codigo).limit(10).all()
+        ).order_by(
+            # Priorizar: código exato, depois código que começa, depois nome
+            db.case(
+                (Produto.codigo.ilike(f'{termo}'), 1),
+                (Produto.codigo.ilike(f'{termo}%'), 2),
+                (Produto.nome.ilike(f'{termo}%'), 3),
+                else_=4
+            ),
+            Produto.codigo
+        ).limit(15).all()  # Aumentar limite para mais opções
 
         return jsonify([{
             'id': p.id,
@@ -584,7 +595,8 @@ def buscar_produtos():
             'estoque': p.quantidade_estoque,
             'preco': float(p.preco) if p.preco else 0.0,
             'quantidade_estoque': p.quantidade_estoque,
-            'ativo': p.ativo
+            'ativo': p.ativo,
+            'descricao': p.descricao
         } for p in produtos])
 
     except Exception as e:
