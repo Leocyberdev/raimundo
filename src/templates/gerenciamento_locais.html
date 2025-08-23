@@ -114,9 +114,11 @@
 <script>
     let editandoLocal = false;
     let localIdAtual = null;
-    const modalExcluir = new bootstrap.Modal(document.getElementById('modalExcluir'));
+    let modalExcluir;
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar modal após DOM carregar
+        modalExcluir = new bootstrap.Modal(document.getElementById('modalExcluir'));
         carregarLocais();
         configurarEventos();
     });
