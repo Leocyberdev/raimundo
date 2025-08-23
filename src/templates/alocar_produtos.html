@@ -117,15 +117,18 @@
                             <div class="col-md-6 mb-3">
                                 <label for="quantidade" class="form-label">
                                     <i class="bi bi-123"></i> Quantidade a Alocar *
-                                    <span id="label-unidade-quantidade" class="text-muted"></span>
+                                    <span id="label-unidade-quantidade" class="text-muted">(em unidades)</span>
                                 </label>
-                                <input type="number" class="form-control" id="quantidade" 
-                                       min="1" required>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="quantidade" 
+                                           min="0" step="1" required>
+                                    <span class="input-group-text" id="sufixo-unidade">un</span>
+                                </div>
                                 <div class="form-text">
                                     Máximo disponível: <span id="max-quantidade">0</span>
-                                    <span id="max-unidade" class="text-muted"></span>
+                                    <span id="max-unidade" class="text-muted">un</span>
                                 </div>
-                            </div>
+                            </div></div>
 
                             <div class="col-md-6 mb-3">
                                 <label for="valor-total" class="form-label">
@@ -640,16 +643,21 @@ function selecionarProduto(produto) {
     document.getElementById('produto-unidade').textContent = unidadeFormatada.nome;
     document.getElementById('produto-preco').textContent = formatCurrency(produto.preco || 0);
 
-    // Atualizar labels com a unidade
+    // Atualizar labels e campos com a unidade do produto
     document.getElementById('label-unidade-quantidade').textContent = `(em ${unidadeFormatada.nome})`;
     document.getElementById('max-unidade').textContent = unidadeFormatada.sufixo;
+    document.getElementById('sufixo-unidade').textContent = unidadeFormatada.sufixo;
 
     // Configurar quantidade máxima e step baseado na unidade
     document.getElementById('max-quantidade').textContent = formatarQuantidade(estoque, unidadeMedida);
     const quantidadeInput = document.getElementById('quantidade');
     quantidadeInput.max = estoque;
     quantidadeInput.step = unidadeFormatada.step;
+    quantidadeInput.min = unidadeFormatada.step;
     quantidadeInput.value = (estoque > 0 && isAtivo) ? unidadeFormatada.valorInicial : 0;
+
+    // Adicionar placeholder com dica da unidade
+    quantidadeInput.placeholder = `Ex: 1${unidadeFormatada.sufixo}`;
 
     // Mostrar seção do produto selecionado
     document.getElementById('produto-selecionado').style.display = 'block';
@@ -658,6 +666,9 @@ function selecionarProduto(produto) {
         document.getElementById('dados-alocacao').style.display = 'block';
         calcularValorTotal();
         atualizarResumo();
+        
+        // Mostrar alerta informativo sobre a unidade
+        showAlert(`Produto selecionado: ${produto.nome} (unidade: ${unidadeFormatada.nome})`, 'info');
     } else {
         document.getElementById('dados-alocacao').style.display = 'none';
         const motivo = !isAtivo ? 'produto inativo' : 'estoque zerado';
@@ -936,6 +947,17 @@ function limparFormulario() {
     document.getElementById('produto-selecionado').style.display = 'none';
     document.getElementById('dados-alocacao').style.display = 'none';
     document.getElementById('resumo-alocacao').innerHTML = '<p class="text-muted text-center">Selecione um produto para ver o resumo</p>';
+    
+    // Resetar campos de unidade para padrão
+    document.getElementById('label-unidade-quantidade').textContent = '(em unidades)';
+    document.getElementById('max-unidade').textContent = 'un';
+    document.getElementById('sufixo-unidade').textContent = 'un';
+    
+    const quantidadeInput = document.getElementById('quantidade');
+    quantidadeInput.step = '1';
+    quantidadeInput.min = '1';
+    quantidadeInput.placeholder = 'Ex: 1un';
+    
     produtoSelecionado = null;
 }
 
@@ -953,31 +975,43 @@ function formatarUnidadeMedida(unidade) {
             nome: 'unidades',
             sufixo: 'un',
             step: '1',
-            valorInicial: 1
+            valorInicial: 1,
+            descricao: 'Unidades individuais'
         },
         'kilo': {
             nome: 'quilogramas',
             sufixo: 'kg',
             step: '0.001',
-            valorInicial: 0.1
+            valorInicial: 0.1,
+            descricao: 'Peso em quilogramas'
         },
         'pacote': {
             nome: 'pacotes',
             sufixo: 'pct',
             step: '1',
-            valorInicial: 1
+            valorInicial: 1,
+            descricao: 'Embalagens/Pacotes'
         },
         'metros': {
             nome: 'metros',
             sufixo: 'm',
             step: '0.01',
-            valorInicial: 1
+            valorInicial: 1,
+            descricao: 'Comprimento em metros'
         },
         'cento': {
             nome: 'centos',
             sufixo: 'cto',
             step: '0.01',
-            valorInicial: 0.1
+            valorInicial: 0.1,
+            descricao: 'Quantidade em centos'
+        },
+        'litro': {
+            nome: 'litros',
+            sufixo: 'L',
+            step: '0.01',
+            valorInicial: 1,
+            descricao: 'Volume em litros'
         }
     };
     
