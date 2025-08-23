@@ -823,6 +823,18 @@ async function editarProduto(produtoId) {
             throw new Error('Modal de edição não encontrado no DOM');
         }
 
+        // Verificar se os elementos do formulário existem
+        const elementosObrigatorios = [
+            'edit-nome', 'edit-categoria', 'edit-descricao', 
+            'edit-fornecedor', 'edit-local', 'edit-preco', 'edit-status'
+        ];
+        
+        const elementosFaltando = elementosObrigatorios.filter(id => !document.getElementById(id));
+        
+        if (elementosFaltando.length > 0) {
+            throw new Error(`Elementos do formulário não encontrados: ${elementosFaltando.join(', ')}`);
+        }
+
         // Carregar categorias primeiro
         try {
             await carregarCategoriasEdicao();
@@ -851,20 +863,43 @@ async function editarProduto(produtoId) {
 function preencherFormularioEdicao(produto) {
     console.log('Preenchendo formulário com produto:', produto);
 
-    document.getElementById('edit-codigo').value = produto.codigo || '';
-    document.getElementById('edit-nome').value = produto.nome || '';
-    document.getElementById('edit-descricao').value = produto.descricao || '';
-    document.getElementById('edit-categoria').value = produto.categoria || '';
-    document.getElementById('edit-fornecedor').value = produto.fornecedor || '';
-    document.getElementById('edit-local').value = produto.local_produto || '';
-    document.getElementById('edit-preco').value = produto.preco || 0;
-    document.getElementById('edit-status').value = produto.ativo ? 'true' : 'false';
+    // Verificar se os elementos existem antes de tentar acessá-los
+    const elementos = {
+        'edit-nome': produto.nome || '',
+        'edit-descricao': produto.descricao || '',
+        'edit-categoria': produto.categoria || '',
+        'edit-fornecedor': produto.fornecedor || '',
+        'edit-local': produto.local_produto || '',
+        'edit-preco': produto.preco || 0,
+        'edit-status': produto.ativo ? 'true' : 'false'
+    };
 
-    // Preencher informações de estoque
-    document.getElementById('estoque-atual').textContent = produto.quantidade_estoque || 0;
-    document.getElementById('unidade-atual').textContent = produto.unidade_medida || 'unidade';
-    document.getElementById('unidade-saldo').textContent = produto.unidade_medida || 'unidade';
-    document.getElementById('max-retirar-edit').textContent = produto.quantidade_estoque || 0;
+    // Preencher elementos verificando se existem
+    for (const [id, valor] of Object.entries(elementos)) {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.value = valor;
+        } else {
+            console.warn(`Elemento com ID '${id}' não encontrado`);
+        }
+    }
+
+    // Preencher informações de estoque (elementos de texto)
+    const elementosTexto = {
+        'estoque-atual': produto.quantidade_estoque || 0,
+        'unidade-atual': produto.unidade_medida || 'unidade',
+        'unidade-saldo': produto.unidade_medida || 'unidade',
+        'max-retirar-edit': produto.quantidade_estoque || 0
+    };
+
+    for (const [id, valor] of Object.entries(elementosTexto)) {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.textContent = valor;
+        } else {
+            console.warn(`Elemento com ID '${id}' não encontrado`);
+        }
+    }
 
     console.log('Formulário preenchido com sucesso');
 }
