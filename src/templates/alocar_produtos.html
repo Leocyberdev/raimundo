@@ -415,7 +415,16 @@ function mostrarResultadosBusca(produtos) {
         return;
     }
 
-    produtos.forEach(produto => {
+    // Filtrar apenas produtos ativos (segurança adicional no frontend)
+    const produtosAtivos = produtos.filter(produto => produto.ativo !== false);
+
+    if (produtosAtivos.length === 0) {
+        results.innerHTML = '<div class="search-item text-muted">Nenhum produto ativo encontrado</div>';
+        results.style.display = 'block';
+        return;
+    }
+
+    produtosAtivos.forEach(produto => {
         const item = document.createElement('div');
         item.className = 'search-item';
         item.style.cursor = 'pointer';
@@ -423,13 +432,10 @@ function mostrarResultadosBusca(produtos) {
         item.style.borderBottom = '1px solid #eee';
 
         const estoque = produto.quantidade_estoque || produto.estoque || 0;
-        const isAtivo = produto.ativo !== false;
         
         let statusEstoque;
-        if (!isAtivo) {
-            statusEstoque = '<span class="badge bg-secondary">Inativo</span>';
-        } else if (estoque === 0) {
-            statusEstoque = '<span class="badge bg-danger">Sem estoque</span>';
+        if (estoque === 0) {
+            statusEstoque = '<span class="badge bg-warning">Sem estoque</span>';
         } else {
             statusEstoque = `<span class="badge bg-success">Estoque: ${estoque}</span>`;
         }
@@ -441,6 +447,7 @@ function mostrarResultadosBusca(produtos) {
                     <small class="text-muted">
                         ${produto.categoria || 'Sem categoria'} | 
                         Preço: ${formatCurrency(produto.preco || 0)}
+                        ${produto.local_produto ? ' | Local: ' + produto.local_produto : ''}
                     </small>
                 </div>
                 <div>${statusEstoque}</div>

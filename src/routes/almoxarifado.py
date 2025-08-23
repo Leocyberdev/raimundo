@@ -557,7 +557,7 @@ def busca_fornecedores():
 # Busca inteligente
 @almoxarifado_bp.route('/api/busca/produtos')
 def buscar_produtos():
-    """Busca inteligente de produtos"""
+    """Busca inteligente de produtos - apenas produtos ativos"""
     termo = request.args.get('q', '').strip()
 
     if len(termo) < 2:
@@ -565,12 +565,15 @@ def buscar_produtos():
 
     try:
         produtos = Produto.query.filter(
-            db.or_(
-                Produto.codigo.ilike(f'%{termo}%'),
-                Produto.nome.ilike(f'%{termo}%'),
-                Produto.descricao.ilike(f'%{termo}%')
+            db.and_(
+                Produto.ativo == True,  # Garantir que só busque produtos ativos
+                db.or_(
+                    Produto.codigo.ilike(f'%{termo}%'),
+                    Produto.nome.ilike(f'%{termo}%'),
+                    Produto.descricao.ilike(f'%{termo}%')
+                )
             )
-        ).filter(Produto.ativo == True).limit(10).all()
+        ).order_by(Produto.codigo).limit(10).all()
 
         return jsonify([{
             'id': p.id,
@@ -580,7 +583,8 @@ def buscar_produtos():
             'local_produto': p.local_produto,
             'estoque': p.quantidade_estoque,
             'preco': float(p.preco) if p.preco else 0.0,
-            'quantidade_estoque': p.quantidade_estoque
+            'quantidade_estoque': p.quantidade_estoque,
+            'ativo': p.ativo
         } for p in produtos])
 
     except Exception as e:
