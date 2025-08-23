@@ -186,7 +186,7 @@ def editar_produto(produto_id):
         produto.categoria = data.get('categoria', produto.categoria)
         produto.local_produto = data.get('local_produto', produto.local_produto)
         produto.preco = float(data.get('preco', produto.preco))
-        
+
         # Atualizar status ativo/inativo
         if 'ativo' in data:
             produto.ativo = bool(data.get('ativo'))
@@ -545,22 +545,21 @@ def busca_fornecedores():
 
 # Busca inteligente
 @almoxarifado_bp.route('/api/busca/produtos')
-def busca_produtos():
+def buscar_produtos():
     """Busca inteligente de produtos"""
-    try:
-        termo = request.args.get('q', '')
-        if len(termo) < 2:
-            return jsonify([])
+    termo = request.args.get('q', '').strip()
 
+    if len(termo) < 2:
+        return jsonify([])
+
+    try:
         produtos = Produto.query.filter(
-            and_(
-                Produto.ativo == True,
-                db.or_(
-                    Produto.nome.ilike(f'%{termo}%'),
-                    Produto.codigo.ilike(f'%{termo}%')
-                )
+            db.or_(
+                Produto.codigo.ilike(f'%{termo}%'),
+                Produto.nome.ilike(f'%{termo}%'),
+                Produto.descricao.ilike(f'%{termo}%')
             )
-        ).limit(10).all()
+        ).filter(Produto.ativo == True).limit(10).all()
 
         return jsonify([{
             'id': p.id,
@@ -569,10 +568,12 @@ def busca_produtos():
             'categoria': p.categoria,
             'local_produto': p.local_produto,
             'estoque': p.quantidade_estoque,
-            'quantidade_estoque': p.quantidade_estoque,
-            'preco': p.preco
+            'preco': float(p.preco) if p.preco else 0.0,
+            'quantidade_estoque': p.quantidade_estoque
         } for p in produtos])
+
     except Exception as e:
+        print(f"Erro na busca de produtos: {e}")
         return jsonify({'error': str(e)}), 500
 
 @almoxarifado_bp.route('/api/funcionarios')
@@ -591,15 +592,15 @@ def usuario_logado():
     try:
         from flask import session
         from src.models.user import User
-        
+
         user_id = session.get('user_id')
         if not user_id:
             return jsonify({'error': 'Usuário não logado'}), 401
-            
+
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
         return jsonify({
             'id': user.id,
             'username': user.username,

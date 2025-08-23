@@ -643,6 +643,8 @@ let produtoEdicao = null;
 
 // Função para editar produto
 async function editarProduto(produtoId) {
+    console.log('Editando produto:', produtoId);
+    
     const produto = produtosCarregados.find(p => p.id === produtoId);
     if (!produto) {
         showAlert('Produto não encontrado', 'error');
@@ -652,25 +654,42 @@ async function editarProduto(produtoId) {
     produtoEdicao = produto;
 
     try {
-        // Preencher formulário de edição
-        document.getElementById('edit-nome').value = produto.nome || '';
-        document.getElementById('edit-descricao').value = produto.descricao || '';
-        document.getElementById('edit-fornecedor').value = produto.fornecedor || '';
-        document.getElementById('edit-local').value = produto.local_produto || '';
-        document.getElementById('edit-preco').value = produto.preco || 0;
-        document.getElementById('edit-status').value = produto.ativo ? 'true' : 'false';
-        document.getElementById('edit-senha').value = '';
-
-        // Carregar categorias no select de edição ANTES de mostrar o modal
+        // Carregar categorias no select de edição PRIMEIRO
         await carregarCategoriasEdicao();
+        
+        // Aguardar um breve momento para garantir que os elementos estão prontos
+        setTimeout(() => {
+            // Preencher formulário de edição
+            const editNome = document.getElementById('edit-nome');
+            const editDescricao = document.getElementById('edit-descricao');
+            const editFornecedor = document.getElementById('edit-fornecedor');
+            const editLocal = document.getElementById('edit-local');
+            const editPreco = document.getElementById('edit-preco');
+            const editStatus = document.getElementById('edit-status');
+            const editSenha = document.getElementById('edit-senha');
+            
+            if (editNome) editNome.value = produto.nome || '';
+            if (editDescricao) editDescricao.value = produto.descricao || '';
+            if (editFornecedor) editFornecedor.value = produto.fornecedor || '';
+            if (editLocal) editLocal.value = produto.local_produto || '';
+            if (editPreco) editPreco.value = produto.preco || 0;
+            if (editStatus) editStatus.value = produto.ativo ? 'true' : 'false';
+            if (editSenha) editSenha.value = '';
 
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('modalEdicao'));
-        modal.show();
+            // Mostrar modal
+            const modalElement = document.getElementById('modalEdicao');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            } else {
+                console.error('Modal de edição não encontrado');
+                showAlert('Erro: Modal de edição não encontrado', 'error');
+            }
+        }, 100);
         
     } catch (error) {
         console.error('Erro ao abrir modal de edição:', error);
-        showAlert('Erro ao abrir formulário de edição', 'error');
+        showAlert('Erro ao abrir formulário de edição: ' + error.message, 'error');
     }
 }
 

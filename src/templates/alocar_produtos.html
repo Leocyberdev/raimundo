@@ -359,15 +359,16 @@ function mostrarResultadosBusca(produtos) {
             const item = document.createElement('div');
             item.className = 'search-item';
 
-            const statusEstoque = produto.estoque === 0 ? 
+            const estoque = produto.quantidade_estoque || produto.estoque || 0;
+            const statusEstoque = estoque === 0 ? 
                 '<span class="badge bg-danger">Sem estoque</span>' : 
-                `<span class="badge bg-success">Estoque: ${produto.estoque}</span>`;
+                `<span class="badge bg-success">Estoque: ${estoque}</span>`;
 
             item.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <strong>${produto.codigo}</strong> - ${produto.nome}<br>
-                        <small class="text-muted">Preço: ${formatCurrency(produto.preco)}</small>
+                        <small class="text-muted">Preço: ${formatCurrency(produto.preco || 0)}</small>
                     </div>
                     <div>${statusEstoque}</div>
                 </div>
@@ -390,18 +391,19 @@ function selecionarProduto(produto) {
     produtoSelecionado = produto;
 
     // Preencher informações do produto
-    document.getElementById('produto-codigo').textContent = produto.codigo;
-    document.getElementById('produto-nome').textContent = produto.nome;
+    document.getElementById('produto-codigo').textContent = produto.codigo || '-';
+    document.getElementById('produto-nome').textContent = produto.nome || '-';
     document.getElementById('produto-categoria').textContent = produto.categoria || '-';
     document.getElementById('produto-local').textContent = produto.local_produto || '-';
-    document.getElementById('produto-estoque').textContent = produto.quantidade_estoque || produto.estoque;
-    document.getElementById('produto-preco').textContent = formatCurrency(produto.preco);
+    
+    const estoque = produto.quantidade_estoque || produto.estoque || 0;
+    document.getElementById('produto-estoque').textContent = estoque;
+    document.getElementById('produto-preco').textContent = formatCurrency(produto.preco || 0);
 
     // Configurar quantidade máxima
-    const estoque = produto.quantidade_estoque || produto.estoque;
     document.getElementById('max-quantidade').textContent = estoque;
     document.getElementById('quantidade').max = estoque;
-    document.getElementById('quantidade').value = Math.min(1, estoque);
+    document.getElementById('quantidade').value = estoque > 0 ? 1 : 0;
 
     // Mostrar seções
     document.getElementById('produto-selecionado').style.display = 'block';
@@ -671,6 +673,63 @@ function limparFormulario() {
     document.getElementById('dados-alocacao').style.display = 'none';
     document.getElementById('resumo-alocacao').innerHTML = '<p class="text-muted text-center">Selecione um produto para ver o resumo</p>';
     produtoSelecionado = null;
+}
+
+// Helper functions
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+    }).format(value || 0);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+}
+
+function showAlert(message, type = 'info') {
+    // Mapear tipos de alerta
+    const typeMap = {
+        'error': 'danger',
+        'success': 'success',
+        'warning': 'warning',
+        'info': 'info',
+        'danger': 'danger'
+    };
+    
+    const alertType = typeMap[type] || 'info';
+    
+    // Criar container de alertas se não existir
+    let alertContainer = document.getElementById('alert-container');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alert-container';
+        alertContainer.style.position = 'fixed';
+        alertContainer.style.top = '20px';
+        alertContainer.style.right = '20px';
+        alertContainer.style.zIndex = '9999';
+        alertContainer.style.width = '400px';
+        document.body.appendChild(alertContainer);
+    }
+
+    // Criar alerta
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${alertType} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <strong>${type.charAt(0).toUpperCase() + type.slice(1)}:</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    alertContainer.appendChild(alertDiv);
+
+    // Remover alerta automaticamente após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
 </script>
 {% endblock %}
