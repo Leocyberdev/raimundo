@@ -172,11 +172,14 @@
                 const busca = buscaObraInput.value;
                 let url = `/api/obras`;
                 const params = new URLSearchParams();
+                
+                // Se há busca, usar busca. Se não há busca mas há status, usar status
                 if (busca) {
                     params.append("busca", busca);
                 } else if (status) {
                     params.append("status", status);
                 }
+                
                 if (params.toString()) url += `?${params.toString()}`;
 
                 const response = await fetch(url);
@@ -420,7 +423,7 @@
                     e.preventDefault();
                     if (ativo) {
                         ativo.click();
-                    } else {
+                    } else if (buscaInput.value.trim()) {
                         // Limpar filtro de status quando buscar por obra específica
                         document.getElementById('filtroStatus').value = '';
                         carregarObras();
@@ -458,7 +461,7 @@
                 
                 // Click para selecionar
                 item.addEventListener('click', function() {
-                    document.getElementById('buscaObra').value = sugestao.texto_completo;
+                    document.getElementById('buscaObra').value = sugestao.numero_obra;
                     sugestoesDiv.style.display = 'none';
                     // Limpar filtro de status quando uma obra específica for selecionada
                     document.getElementById('filtroStatus').value = '';
