@@ -158,6 +158,11 @@
     async function carregarLocais() {
         try {
             const response = await fetch('/api/locais');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const locais = await response.json();
             
             const tbody = document.getElementById('listaLocais');

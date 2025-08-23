@@ -899,7 +899,7 @@ def excluir_obra(obra_id):
 
 
 # Rotas para Locais
-@almoxarifado_bp.route('/locais', methods=['GET'])
+@almoxarifado_bp.route('/api/locais', methods=['GET'])
 def get_locais():
     try:
         locais = Local.query.filter_by(ativo=True).order_by(Local.nome_local).all()
@@ -907,7 +907,7 @@ def get_locais():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@almoxarifado_bp.route('/locais', methods=['POST'])
+@almoxarifado_bp.route('/api/locais', methods=['POST'])
 def create_local():
     try:
         data = request.get_json()
@@ -942,7 +942,7 @@ def create_local():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@almoxarifado_bp.route('/locais/<int:local_id>', methods=['PUT'])
+@almoxarifado_bp.route('/api/locais/<int:local_id>', methods=['PUT'])
 def update_local(local_id):
     try:
         local = Local.query.get_or_404(local_id)
@@ -979,7 +979,7 @@ def update_local(local_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@almoxarifado_bp.route('/locais/<int:local_id>', methods=['DELETE'])
+@almoxarifado_bp.route('/api/locais/<int:local_id>', methods=['DELETE'])
 def delete_local(local_id):
     try:
         local = Local.query.get_or_404(local_id)

@@ -7,19 +7,19 @@ SAO_PAULO_TZ = timezone("America/Sao_Paulo")
 
 class Fornecedor(db.Model):
     __tablename__ = 'fornecedores'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(200), unique=True, nullable=False)
     ativo = db.Column(db.Boolean, default=True)
     data_criacao = db.Column(db.DateTime, default=lambda: datetime.now(SAO_PAULO_TZ))
-    
+
     def __repr__(self):
         return f'<Fornecedor {self.nome}>'
-    
+
     def to_dict(self):
         # Contar produtos usando este fornecedor
         total_produtos = Produto.query.filter_by(fornecedor=self.nome, ativo=True).count()
-        
+
         return {
             'id': self.id,
             'nome': self.nome,
@@ -30,20 +30,20 @@ class Fornecedor(db.Model):
 
 class Categoria(db.Model):
     __tablename__ = 'categorias'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), unique=True, nullable=False)
     descricao = db.Column(db.Text)
     ativa = db.Column(db.Boolean, default=True)
     data_criacao = db.Column(db.DateTime, default=lambda: datetime.now(SAO_PAULO_TZ))
-    
+
     def __repr__(self):
         return f'<Categoria {self.nome}>'
-    
+
     def to_dict(self):
         # Contar produtos usando esta categoria
         total_produtos = Produto.query.filter_by(categoria=self.nome, ativo=True).count()
-        
+
         return {
             'id': self.id,
             'nome': self.nome,
@@ -55,7 +55,7 @@ class Categoria(db.Model):
 
 class Produto(db.Model):
     __tablename__ = 'produtos'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(50), unique=True, nullable=False)
     nome = db.Column(db.String(200), nullable=False)
@@ -67,13 +67,13 @@ class Produto(db.Model):
     quantidade_estoque = db.Column(db.Integer, default=0)
     data_cadastro = db.Column(db.DateTime, default=lambda: datetime.now(SAO_PAULO_TZ))
     ativo = db.Column(db.Boolean, default=True)
-    
+
     # Relacionamentos
     movimentacoes = db.relationship('Movimentacao', backref='produto', lazy=True)
-    
+
     def __repr__(self):
         return f'<Produto {self.codigo} - {self.nome}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -91,17 +91,17 @@ class Produto(db.Model):
 
 class Local(db.Model):
     __tablename__ = 'locais'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     nome_local = db.Column(db.String(100), unique=True, nullable=False)  # Ex: Rua 4
     posicao = db.Column(db.String(50), nullable=True)  # Ex: 1.5, 2-A, 3.2-B (números, pontos e hífens)
     descricao = db.Column(db.Text)
     ativo = db.Column(db.Boolean, default=True)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<Local {self.nome_local}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -115,7 +115,7 @@ class Local(db.Model):
 
 class Obra(db.Model):
     __tablename__ = 'obras'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     numero_obra = db.Column(db.String(50), unique=True, nullable=False)
     nome_obra = db.Column(db.String(200), nullable=False)
@@ -125,13 +125,13 @@ class Obra(db.Model):
     ativa = db.Column(db.Boolean, default=True)
     status = db.Column(db.String(50), default='Prevista')  # Prevista, Em Andamento, Pausada, Entregue
     data_entrega = db.Column(db.DateTime, nullable=True)
-    
+
     # Relacionamentos
     movimentacoes = db.relationship('Movimentacao', backref='obra', lazy=True)
-    
+
     def __repr__(self):
         return f'<Obra {self.numero_obra} - {self.nome_obra}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -147,18 +147,18 @@ class Obra(db.Model):
 
 class Funcionario(db.Model):
     __tablename__ = 'funcionarios'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(200), nullable=False)
     cargo = db.Column(db.String(100))
     ativo = db.Column(db.Boolean, default=True)
-    
+
     # Relacionamentos
     movimentacoes = db.relationship('Movimentacao', backref='funcionario', lazy=True)
-    
+
     def __repr__(self):
         return f'<Funcionario {self.nome}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -169,7 +169,7 @@ class Funcionario(db.Model):
 
 class Movimentacao(db.Model):
     __tablename__ = 'movimentacoes'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
     obra_id = db.Column(db.Integer, db.ForeignKey('obras.id'), nullable=True)
@@ -180,10 +180,10 @@ class Movimentacao(db.Model):
     valor_total = db.Column(db.Float, default=0.0)
     data_movimentacao = db.Column(db.DateTime, default=lambda: datetime.now(SAO_PAULO_TZ))
     observacoes = db.Column(db.Text)
-    
+
     def __repr__(self):
         return f'<Movimentacao {self.tipo_movimentacao} - {self.quantidade}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -201,5 +201,3 @@ class Movimentacao(db.Model):
             'obra': self.obra.to_dict() if self.obra else None,
             'funcionario': self.funcionario.to_dict() if self.funcionario else None
         }
-
-
