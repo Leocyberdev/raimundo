@@ -110,146 +110,197 @@
             </div>
         </div>
 
-        <!-- Histórico de Obras -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Histórico de Obras</h5>
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-secondary btn-sm" id="limparBusca">
-                        <i class="bi bi-arrow-clockwise"></i> Limpar
-                    </button>
+        <!-- Seção de Filtros e Buscas -->
+        <div class="row">
+            <!-- Filtro por Status -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Obras por Status</h5>
+                        <button type="button" class="btn btn-secondary btn-sm" id="limparFiltroStatus">
+                            <i class="bi bi-arrow-clockwise"></i> Limpar
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="filtroStatus" class="form-label">Filtrar por Status</label>
+                            <select class="form-select" id="filtroStatus">
+                                <option value="">Todos</option>
+                                <option value="Prevista">Prevista</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Pausada">Pausada</option>
+                                <option value="Entregue">Entregue</option>
+                            </select>
+                        </div>
+                        <div id="listaObrasFiltro"></div>
+                    </div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="filtroStatus" class="form-label">Filtrar por Status</label>
-                        <select class="form-select" id="filtroStatus">
-                            <option value="">Todos</option>
-                            <option value="Prevista">Prevista</option>
-                            <option value="Em Andamento">Em Andamento</option>
-                            <option value="Pausada">Pausada</option>
-                            <option value="Entregue">Entregue</option>
-                        </select>
+
+            <!-- Busca por Número/Nome -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Buscar Obra Específica</h5>
+                        <button type="button" class="btn btn-secondary btn-sm" id="limparBuscaObra">
+                            <i class="bi bi-arrow-clockwise"></i> Limpar
+                        </button>
                     </div>
-                    <div class="col-md-6">
-                        <label for="buscaObra" class="form-label">Buscar Obra (Número ou Nome)</label>
-                        <div class="position-relative">
-                            <input type="text" class="form-control" id="buscaObra" placeholder="Digite o número ou nome da obra..." autocomplete="off">
-                            <div id="sugestoesObra" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm" style="z-index: 1000; max-height: 200px; overflow-y: auto; display: none;"></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="buscaObra" class="form-label">Buscar Obra (Número ou Nome)</label>
+                            <div class="position-relative">
+                                <input type="text" class="form-control" id="buscaObra" placeholder="Digite o número ou nome da obra..." autocomplete="off">
+                                <div id="sugestoesObra" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm" style="z-index: 1000; max-height: 200px; overflow-y: auto; display: none;"></div>
+                            </div>
                         </div>
+                        <div id="listaObrasBusca"></div>
                     </div>
                 </div>
-
-                <div id="listaObras"></div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Função para carregar obras (global scope)
-        async function carregarObras() {
+        // Função para carregar obras por filtro (status)
+        async function carregarObrasPorFiltro() {
             const filtroStatusSelect = document.getElementById("filtroStatus");
-            const buscaObraInput = document.getElementById("buscaObra");
-            const listaObrasDiv = document.getElementById("listaObras");
+            const listaObrasFiltroDiv = document.getElementById("listaObrasFiltro");
             
             try {
                 const status = filtroStatusSelect.value;
-                const busca = buscaObraInput.value;
                 let url = `/api/obras`;
-                const params = new URLSearchParams();
                 
-                // Se há busca, usar busca. Se não há busca mas há status, usar status
-                if (busca) {
-                    params.append("busca", busca);
-                } else if (status) {
-                    params.append("status", status);
+                if (status) {
+                    url += `?status=${status}`;
                 }
-                
-                if (params.toString()) url += `?${params.toString()}`;
 
                 const response = await fetch(url);
                 const obras = await response.json();
-                listaObrasDiv.innerHTML = '';
+                listaObrasFiltroDiv.innerHTML = '';
+                
                 if (obras.length === 0) {
-                    listaObrasDiv.innerHTML = '<p>Nenhuma obra encontrada.</p>';
+                    listaObrasFiltroDiv.innerHTML = '<p class="text-muted">Nenhuma obra encontrada.</p>';
                     return;
                 }
 
-                obras.forEach(obra => {
-                    const obraCard = document.createElement('div');
-                    obraCard.className = 'card mb-3';
-                    obraCard.innerHTML = `
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            Obra: ${obra.numero_obra} - ${obra.nome_obra}
-                            <div>
-                                <span class="badge bg-info">${obra.status}</span>
-                                <button class="btn btn-sm btn-warning editar-obra" data-id="${obra.id}">Editar</button>
-                                <button class="btn btn-sm btn-danger excluir-obra" data-id="${obra.id}">Excluir</button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Descrição:</strong> ${obra.descricao || 'N/A'}</p>
-                            <p><strong>Início:</strong> ${obra.data_inicio || 'N/A'}</p>
-                            <p><strong>Fim:</strong> ${obra.data_fim || 'N/A'}</p>
-                            ${obra.data_entrega ? `<p><strong>Data de Entrega:</strong> ${new Date(obra.data_entrega).toLocaleDateString()}</p>` : ''}
-                            <h6>Produtos Alocados:</h6>
-                            <ul class="list-group list-group-flush">
-                                ${obra.produtos_alocados.length > 0 ? 
-                                    obra.produtos_alocados.map(produto => `
-                                        <li class="list-group-item">
-                                            ${produto.nome} (${produto.codigo}) - Quantidade: ${produto.quantidade_alocada}
-                                        </li>
-                                    `).join('')
-                                    : '<li class="list-group-item">Nenhum produto alocado.</li>'
-                                }
-                            </ul>
-                        </div>
-                    `;
-                    listaObrasDiv.appendChild(obraCard);
-                });
-
-                document.querySelectorAll('.editar-obra').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const obraId = e.target.dataset.id;
-                        // Buscar obra específica na lista já carregada
-                        const obra = obras.find(o => o.id == obraId);
-                        
-                        obraIdInput.value = obra.id;
-                        numeroObraInput.value = obra.numero_obra;
-                        nomeObraInput.value = obra.nome_obra;
-                        descricaoObraInput.value = obra.descricao || '';
-                        dataInicioInput.value = obra.data_inicio || '';
-                        dataFimInput.value = obra.data_fim || '';
-                        statusObraSelect.value = obra.status;
-                    });
-                });
-
-                document.querySelectorAll('.excluir-obra').forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const obraId = e.target.dataset.id;
-                        const senha = prompt('Digite a senha de administrador para excluir a obra:');
-                        if (!senha) return;
-
-                        const response = await fetch(`/api/obras/${obraId}`, {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ senha: senha })
-                        });
-                        const result = await response.json();
-                        if (response.ok) {
-                            alert(result.message);
-                            carregarObras();
-                        } else {
-                            alert(`Erro: ${result.error}`);
-                        }
-                    });
-                });
+                renderizarObras(obras, listaObrasFiltroDiv);
             } catch (error) {
-                console.error('Erro ao carregar obras:', error);
-                listaObrasDiv.innerHTML = '<p>Erro ao carregar obras.</p>';
+                console.error('Erro ao carregar obras por filtro:', error);
+                listaObrasFiltroDiv.innerHTML = '<p class="text-danger">Erro ao carregar obras.</p>';
             }
+        }
+
+        // Função para carregar obras por busca
+        async function carregarObrasPorBusca() {
+            const buscaObraInput = document.getElementById("buscaObra");
+            const listaObrasBuscaDiv = document.getElementById("listaObrasBusca");
+            
+            try {
+                const busca = buscaObraInput.value.trim();
+                
+                if (!busca) {
+                    listaObrasBuscaDiv.innerHTML = '<p class="text-muted">Digite um termo para buscar.</p>';
+                    return;
+                }
+
+                const url = `/api/obras?busca=${encodeURIComponent(busca)}`;
+                const response = await fetch(url);
+                const obras = await response.json();
+                listaObrasBuscaDiv.innerHTML = '';
+                
+                if (obras.length === 0) {
+                    listaObrasBuscaDiv.innerHTML = '<p class="text-muted">Nenhuma obra encontrada.</p>';
+                    return;
+                }
+
+                renderizarObras(obras, listaObrasBuscaDiv);
+            } catch (error) {
+                console.error('Erro ao carregar obras por busca:', error);
+                listaObrasBuscaDiv.innerHTML = '<p class="text-danger">Erro ao carregar obras.</p>';
+            }
+        }
+
+        // Função para renderizar obras (comum para ambas as seções)
+        function renderizarObras(obras, containerDiv) {
+            obras.forEach(obra => {
+                const obraCard = document.createElement('div');
+                obraCard.className = 'card mb-2';
+                obraCard.innerHTML = `
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <small><strong>${obra.numero_obra}</strong> - ${obra.nome_obra}</small>
+                        <div>
+                            <span class="badge bg-info">${obra.status}</span>
+                            <button class="btn btn-sm btn-warning editar-obra" data-id="${obra.id}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger excluir-obra" data-id="${obra.id}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="small"><strong>Descrição:</strong> ${obra.descricao || 'N/A'}</p>
+                        <p class="small"><strong>Período:</strong> ${obra.data_inicio || 'N/A'} até ${obra.data_fim || 'N/A'}</p>
+                        ${obra.data_entrega ? `<p class="small"><strong>Entrega:</strong> ${new Date(obra.data_entrega).toLocaleDateString()}</p>` : ''}
+                        <div class="small">
+                            <strong>Produtos:</strong> ${obra.produtos_alocados.length} alocado(s)
+                            ${obra.produtos_alocados.length > 0 ? 
+                                `<ul class="mt-1 mb-0">
+                                    ${obra.produtos_alocados.slice(0, 3).map(produto => `
+                                        <li>${produto.nome} - Qtd: ${produto.quantidade_alocada}</li>
+                                    `).join('')}
+                                    ${obra.produtos_alocados.length > 3 ? `<li><em>+${obra.produtos_alocados.length - 3} outros...</em></li>` : ''}
+                                </ul>`
+                                : ''
+                            }
+                        </div>
+                    </div>
+                `;
+                containerDiv.appendChild(obraCard);
+            });
+
+            // Adicionar event listeners para editar e excluir
+            containerDiv.querySelectorAll('.editar-obra').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const obraId = e.target.closest('button').dataset.id;
+                    const obra = obras.find(o => o.id == obraId);
+                    
+                    document.getElementById('obraId').value = obra.id;
+                    document.getElementById('numeroObra').value = obra.numero_obra;
+                    document.getElementById('nomeObra').value = obra.nome_obra;
+                    document.getElementById('descricaoObra').value = obra.descricao || '';
+                    document.getElementById('dataInicio').value = obra.data_inicio || '';
+                    document.getElementById('dataFim').value = obra.data_fim || '';
+                    document.getElementById('statusObra').value = obra.status;
+                    
+                    // Scroll para o formulário
+                    document.getElementById('obraForm').scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+
+            containerDiv.querySelectorAll('.excluir-obra').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const obraId = e.target.closest('button').dataset.id;
+                    const senha = prompt('Digite a senha de administrador para excluir a obra:');
+                    if (!senha) return;
+
+                    const response = await fetch(`/api/obras/${obraId}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ senha: senha })
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert(result.message);
+                        carregarObrasPorFiltro();
+                        carregarObrasPorBusca();
+                    } else {
+                        alert(`Erro: ${result.error}`);
+                    }
+                });
+            });
         }
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -315,7 +366,8 @@
                     alert('Obra salva com sucesso!');
                     obraForm.reset();
                     obraIdInput.value = '';
-                    carregarObras();
+                    carregarObrasPorFiltro();
+                    carregarObrasPorBusca();
                 } else {
                     alert(`Erro: ${result.error}`);
                 }
@@ -334,30 +386,37 @@
                 obraIdInput.value = '';
             });
 
-            // Eventos de filtro e busca
-            filtroStatusSelect.addEventListener("change", carregarObras);
+            // Event listeners para filtro por status
+            filtroStatusSelect.addEventListener("change", carregarObrasPorFiltro);
+            
+            document.getElementById("limparFiltroStatus").addEventListener("click", function() {
+                filtroStatusSelect.value = '';
+                carregarObrasPorFiltro();
+            });
+
+            // Event listeners para busca
             buscaObraInput.addEventListener("input", function() {
-                // Se o campo de busca estiver vazio, recarregar com base no filtro de status
+                // Se o campo estiver vazio, limpar resultados
                 if (this.value.trim() === '') {
-                    carregarObras();
+                    document.getElementById("listaObrasBusca").innerHTML = '<p class="text-muted">Digite um termo para buscar.</p>';
                 }
             });
 
             // Buscar ao pressionar Enter
             buscaObraInput.addEventListener("keypress", function(e) {
                 if (e.key === 'Enter') {
-                    filtroStatusSelect.value = '';
-                    carregarObras();
+                    carregarObrasPorBusca();
                 }
             });
-            limparBuscaBtn.addEventListener("click", function() {
-                filtroStatusSelect.value = '';
+
+            document.getElementById("limparBuscaObra").addEventListener("click", function() {
                 buscaObraInput.value = '';
-                carregarObras();
+                document.getElementById("listaObrasBusca").innerHTML = '<p class="text-muted">Digite um termo para buscar.</p>';
             });
 
             // Carregar obras ao iniciar a página
-            carregarObras();
+            carregarObrasPorFiltro();
+            document.getElementById("listaObrasBusca").innerHTML = '<p class="text-muted">Digite um termo para buscar.</p>';
             
             // Configurar autocomplete para busca de obras
             configurarAutocompleteBusca();
@@ -480,9 +539,7 @@
                 item.addEventListener('click', function() {
                     document.getElementById('buscaObra').value = sugestao.numero_obra;
                     sugestoesDiv.style.display = 'none';
-                    // Limpar filtro de status quando uma obra específica for selecionada
-                    document.getElementById('filtroStatus').value = '';
-                    carregarObras();
+                    carregarObrasPorBusca();
                 });
                 
                 sugestoesDiv.appendChild(item);
