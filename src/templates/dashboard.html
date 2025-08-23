@@ -53,7 +53,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Produtos Mais Movimentados -->
     <div class="col-lg-4 mb-4">
         <div class="card">
@@ -103,7 +103,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Resumo por Categoria -->
     <div class="col-lg-4 mb-4">
         <div class="card">
@@ -132,7 +132,7 @@ async function carregarDashboard() {
     try {
         const response = await fetch('/api/dashboard/stats');
         const data = await response.json();
-        
+
         if (response.ok) {
             atualizarEstatisticas(data);
             criarGraficoSaidas(data);
@@ -149,16 +149,16 @@ async function carregarDashboard() {
 
 function atualizarEstatisticas(data) {
     document.getElementById('economia-mes').textContent = formatCurrency(data.economia_mes);
-    
+
     // Calcular totais dos resumos de categoria
     let totalProdutos = 0;
     let produtosAtivos = 0;
-    
+
     data.resumo_categorias.forEach(categoria => {
         totalProdutos += categoria.produtos;
         produtosAtivos += categoria.estoque;
     });
-    
+
     document.getElementById('total-produtos').textContent = totalProdutos;
     document.getElementById('produtos-ativos').textContent = produtosAtivos;
     document.getElementById('movimentacoes-mes').textContent = data.ultimas_movimentacoes.length;
@@ -166,18 +166,18 @@ function atualizarEstatisticas(data) {
 
 function criarGraficoSaidas(data) {
     const ctx = document.getElementById('graficoSaidas').getContext('2d');
-    
+
     // Simular dados dos últimos 7 dias
     const labels = [];
     const valores = [];
-    
+
     for (let i = 6; i >= 0; i--) {
         const data_atual = new Date();
         data_atual.setDate(data_atual.getDate() - i);
         labels.push(data_atual.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }));
         valores.push(Math.floor(Math.random() * 50) + 10); // Dados simulados
     }
-    
+
     graficoSaidas = new Chart(ctx, {
         type: 'line',
         data: {
@@ -219,11 +219,11 @@ function criarGraficoSaidas(data) {
 
 function criarGraficoCategoria(data) {
     const ctx = document.getElementById('graficoCategoria').getContext('2d');
-    
+
     const labels = data.resumo_categorias.map(cat => cat.categoria);
     const valores = data.resumo_categorias.map(cat => cat.estoque);
     const cores = ['#e74c3c', '#f39c12', '#27ae60'];
-    
+
     graficoCategoria = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -249,20 +249,20 @@ function criarGraficoCategoria(data) {
 function atualizarUltimasMovimentacoes(movimentacoes) {
     const tbody = document.getElementById('ultimas-movimentacoes');
     tbody.innerHTML = '';
-    
+
     if (movimentacoes.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma movimentação encontrada</td></tr>';
         return;
     }
-    
+
     movimentacoes.forEach(mov => {
         const tr = document.createElement('tr');
-        
+
         let badgeClass = 'bg-primary';
         if (mov.tipo_movimentacao === 'ALOCACAO') badgeClass = 'bg-success';
         else if (mov.tipo_movimentacao === 'SAIDA') badgeClass = 'bg-warning';
         else if (mov.tipo_movimentacao === 'ENTRADA') badgeClass = 'bg-info';
-        
+
         tr.innerHTML = `
             <td>${formatDate(mov.data_movimentacao)}</td>
             <td>
@@ -274,7 +274,7 @@ function atualizarUltimasMovimentacoes(movimentacoes) {
             <td>${formatCurrency(mov.valor_total)}</td>
             <td>${mov.funcionario ? mov.funcionario.nome : 'N/A'}</td>
         `;
-        
+
         tbody.appendChild(tr);
     });
 }
@@ -282,18 +282,18 @@ function atualizarUltimasMovimentacoes(movimentacoes) {
 function atualizarProdutosTop(produtos) {
     const container = document.getElementById('produtos-top');
     container.innerHTML = '';
-    
+
     if (produtos.length === 0) {
         container.innerHTML = '<div class="text-center text-muted">Nenhum produto movimentado</div>';
         return;
     }
-    
+
     produtos.forEach((produto, index) => {
         const item = document.createElement('div');
         item.className = 'list-group-item d-flex justify-content-between align-items-center';
-        
+
         const medalha = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}º`;
-        
+
         item.innerHTML = `
             <div>
                 <strong>${medalha} ${produto.nome}</strong><br>
@@ -301,10 +301,9 @@ function atualizarProdutosTop(produtos) {
             </div>
             <span class="badge bg-primary rounded-pill">${produto.quantidade}</span>
         `;
-        
+
         container.appendChild(item);
     });
 }
 </script>
 {% endblock %}
-
