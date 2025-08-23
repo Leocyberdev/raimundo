@@ -604,6 +604,7 @@ def buscar_produtos():
             'estoque': p.quantidade_estoque,
             'preco': float(p.preco) if p.preco else 0.0,
             'quantidade_estoque': p.quantidade_estoque,
+            'unidade_medida': p.unidade_medida,
             'ativo': p.ativo,
             'descricao': p.descricao
         } for p in produtos])

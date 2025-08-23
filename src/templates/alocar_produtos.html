@@ -635,6 +635,8 @@ function selecionarProduto(produto) {
     const unidadeMedida = produto.unidade_medida || 'unidade';
     const isAtivo = produto.ativo !== false;
     
+    console.log('Unidade de medida detectada:', unidadeMedida);
+    
     // Configurar exibição da unidade de medida
     const unidadeFormatada = formatarUnidadeMedida(unidadeMedida);
     
