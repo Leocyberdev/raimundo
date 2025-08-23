@@ -68,6 +68,9 @@
                         <button type="button" class="btn btn-success" onclick="exportarEstoque()">
                             <i class="bi bi-download"></i> Exportar
                         </button>
+                        <button type="button" class="btn btn-danger" onclick="abrirModalExclusao()">
+                            <i class="bi bi-trash"></i> Excluir Produto
+                        </button>
                     </div>
                 </div>
             </div>
@@ -271,6 +274,62 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Modal de Exclusão de Produto -->
+<div class="modal fade" id="modalExclusao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-trash"></i> Excluir Produto
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="busca-excluir" class="form-label">Buscar Produto para Excluir</label>
+                    <div class="search-container">
+                        <input type="text" class="form-control" id="busca-excluir" 
+                               placeholder="Digite código ou nome do produto" autocomplete="off">
+                        <div class="search-results" id="search-results-excluir"></div>
+                    </div>
+                </div>
+                
+                <div id="produto-info-excluir" style="display: none;">
+                    <div class="alert alert-info">
+                        <h6>Produto Selecionado:</h6>
+                        <div id="detalhes-produto-excluir"></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="filtro-status-excluir" class="form-label">Filtrar por Status</label>
+                        <select class="form-select" id="filtro-status-excluir" onchange="filtrarProdutosExcluir()">
+                            <option value="">Todos</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Atenção!</strong> Esta ação irá desativar o produto. Ele não será mais exibido nas listagens ativas.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="senha-excluir" class="form-label">Senha de Administrador *</label>
+                        <input type="password" class="form-control" id="senha-excluir" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao" onclick="confirmarExclusao()" disabled>
+                    <i class="bi bi-trash"></i> Excluir Produto
+                </button>
+            </div>
+        </div>
+    </div>
 </div></div>
 {% endblock %}
 
@@ -402,6 +461,9 @@ function atualizarTabela(produtos) {
                 </button>
                 <button class="btn btn-sm btn-outline-warning" onclick="editarProduto(${produto.id})" title="Editar Produto">
                     <i class="bi bi-pencil-square"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirProduto(${produto.id})" title="Excluir Produto">
+                    <i class="bi bi-trash"></i>
                 </button>
                 ${produto.quantidade_estoque > 0 && produto.ativo ?
                     `<button class="btn btn-sm btn-outline-success" onclick="alocarProduto(${produto.id})" title="Alocar Produto">
@@ -591,6 +653,23 @@ function exportarEstoque() {
     // Fazer download do arquivo CSV
     window.location.href = '/api/estoque/exportar';
     showAlert('Exportação iniciada! O download será iniciado automaticamente.', 'success');
+}
+
+function abrirModalExclusao() {
+    // Limpar campos
+    document.getElementById('busca-excluir').value = '';
+    document.getElementById('senha-excluir').value = '';
+    document.getElementById('filtro-status-excluir').value = '';
+    document.getElementById('produto-info-excluir').style.display = 'none';
+    document.getElementById('search-results-excluir').style.display = 'none';
+    document.getElementById('btn-confirmar-exclusao').disabled = true;
+    
+    // Configurar busca
+    configurarBuscaExcluir();
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
+    modal.show();
 }
 
 // Configuração do autocomplete para fornecedores
@@ -905,6 +984,206 @@ async function salvarEdicao() {
         }
     } catch (error) {
         console.error('Erro ao salvar edição:', error);
+        showAlert('Erro de conexão: ' + error.message, 'danger');
+    }
+}
+
+// Variáveis para exclusão
+let produtoExclusao = null;
+let produtosFiltradosExcluir = [];
+
+// Função para excluir produto
+function excluirProduto(produtoId) {
+    const produto = produtosCarregados.find(p => p.id === produtoId);
+    if (!produto) {
+        showAlert('Produto não encontrado', 'error');
+        return;
+    }
+
+    // Definir produto para exclusão
+    produtoExclusao = produto;
+    
+    // Preencher informações do produto
+    mostrarInfoProdutoExcluir(produto);
+    
+    // Configurar busca
+    configurarBuscaExcluir();
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
+    modal.show();
+}
+
+function mostrarInfoProdutoExcluir(produto) {
+    const infoDiv = document.getElementById('produto-info-excluir');
+    const detalhesDiv = document.getElementById('detalhes-produto-excluir');
+    
+    detalhesDiv.innerHTML = `
+        <strong>Código:</strong> ${produto.codigo}<br>
+        <strong>Nome:</strong> ${produto.nome}<br>
+        <strong>Categoria:</strong> ${produto.categoria}<br>
+        <strong>Status:</strong> <span class="badge ${produto.ativo ? 'bg-success' : 'bg-secondary'}">${produto.ativo ? 'Ativo' : 'Inativo'}</span><br>
+        <strong>Estoque:</strong> ${produto.quantidade_estoque}<br>
+        <strong>Preço:</strong> ${formatCurrency(produto.preco)}
+    `;
+    
+    infoDiv.style.display = 'block';
+    
+    // Habilitar botão de confirmação
+    document.getElementById('btn-confirmar-exclusao').disabled = false;
+    
+    // Preencher campo de busca
+    document.getElementById('busca-excluir').value = produto.codigo;
+}
+
+function configurarBuscaExcluir() {
+    const input = document.getElementById('busca-excluir');
+    const results = document.getElementById('search-results-excluir');
+    let timeoutId;
+
+    input.addEventListener('input', function() {
+        const termo = this.value.trim();
+        
+        clearTimeout(timeoutId);
+        
+        if (termo.length < 1) {
+            results.style.display = 'none';
+            return;
+        }
+
+        results.innerHTML = '<div class="search-item text-muted"><i class="bi bi-search"></i> Buscando...</div>';
+        results.style.display = 'block';
+
+        timeoutId = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/busca/produtos?q=${encodeURIComponent(termo)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const produtos = await response.json();
+                
+                // Aplicar filtro de status se selecionado
+                const statusFiltro = document.getElementById('filtro-status-excluir').value;
+                let produtosFiltrados = produtos;
+                
+                if (statusFiltro === 'ativo') {
+                    produtosFiltrados = produtos.filter(p => p.ativo === true);
+                } else if (statusFiltro === 'inativo') {
+                    produtosFiltrados = produtos.filter(p => p.ativo === false);
+                }
+                
+                mostrarResultadosBuscaExcluir(produtosFiltrados);
+            } catch (error) {
+                console.error('Erro na busca:', error);
+                results.innerHTML = '<div class="search-item text-danger">Erro na busca</div>';
+            }
+        }, 300);
+    });
+
+    // Fechar resultados ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
+}
+
+function mostrarResultadosBuscaExcluir(produtos) {
+    const results = document.getElementById('search-results-excluir');
+    results.innerHTML = '';
+
+    if (!produtos || produtos.length === 0) {
+        results.innerHTML = '<div class="search-item text-muted"><i class="bi bi-search"></i> Nenhum produto encontrado</div>';
+        results.style.display = 'block';
+        return;
+    }
+
+    produtos.forEach(produto => {
+        const item = document.createElement('div');
+        item.className = 'search-item';
+        
+        const statusBadge = produto.ativo ? 
+            '<span class="badge bg-success">Ativo</span>' : 
+            '<span class="badge bg-secondary">Inativo</span>';
+        
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${produto.codigo}</strong> - ${produto.nome}<br>
+                    <small class="text-muted">Estoque: ${produto.quantidade_estoque} | Preço: ${formatCurrency(produto.preco)}</small>
+                </div>
+                <div>${statusBadge}</div>
+            </div>
+        `;
+        
+        item.onclick = function() {
+            produtoExclusao = produto;
+            mostrarInfoProdutoExcluir(produto);
+            results.style.display = 'none';
+        };
+        
+        results.appendChild(item);
+    });
+
+    results.style.display = 'block';
+}
+
+function filtrarProdutosExcluir() {
+    // Refazer a busca com o novo filtro
+    const termo = document.getElementById('busca-excluir').value.trim();
+    if (termo.length >= 1) {
+        document.getElementById('busca-excluir').dispatchEvent(new Event('input'));
+    }
+}
+
+async function confirmarExclusao() {
+    if (!produtoExclusao) {
+        showAlert('Nenhum produto selecionado para exclusão', 'error');
+        return;
+    }
+
+    const senha = document.getElementById('senha-excluir').value.trim();
+    if (!senha) {
+        showAlert('Senha de administrador é obrigatória', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/produtos/${produtoExclusao.id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ senha: senha })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showAlert('Produto excluído com sucesso!', 'success');
+            
+            // Fechar modal
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalExclusao'));
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+            
+            // Limpar dados
+            produtoExclusao = null;
+            document.getElementById('senha-excluir').value = '';
+            document.getElementById('busca-excluir').value = '';
+            document.getElementById('produto-info-excluir').style.display = 'none';
+            document.getElementById('btn-confirmar-exclusao').disabled = true;
+            
+            // Recarregar lista de produtos
+            await carregarProdutos();
+        } else {
+            showAlert('Erro ao excluir: ' + (result.error || 'Erro desconhecido'), 'danger');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir produto:', error);
         showAlert('Erro de conexão: ' + error.message, 'danger');
     }
 }
