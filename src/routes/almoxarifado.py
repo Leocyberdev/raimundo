@@ -272,7 +272,7 @@ def gerenciar_saldo(produto_id):
         else:
             return jsonify({'error': 'Operação inválida'}), 400
 
-        # Registrar movimentação - usar usuário logado quando possível
+        # Registrar movimentação - usar usuário logado
         from flask import session
         user_id = session.get('user_id')
         funcionario_id = 1  # padrão
@@ -281,7 +281,7 @@ def gerenciar_saldo(produto_id):
             from src.models.user import User
             user = User.query.get(user_id)
             if user:
-                # Buscar funcionário com o mesmo nome do usuário
+                # Buscar funcionário com o mesmo nome do usuário (busca exata)
                 funcionario = Funcionario.query.filter_by(nome=user.username, ativo=True).first()
                 if not funcionario:
                     # Se não encontrar, criar funcionário automaticamente
@@ -397,31 +397,31 @@ def alocar_produto():
         obra = Obra.query.get_or_404(data['obra_id'])
         quantidade = int(data['quantidade'])
 
-        # Usar o funcionário selecionado ou buscar por usuário logado
+        # Obter o usuário logado
+        from flask import session
+        user_id = session.get('user_id')
         funcionario_id = data.get('funcionario_id')
-        if not funcionario_id:
-            # Se não foi especificado funcionário, tentar encontrar baseado no usuário logado
-            from flask import session
-            user_id = session.get('user_id')
-            funcionario_encontrado = None
-
+        
+        # Se um funcionário específico foi selecionado, usar ele
+        if funcionario_id and not str(funcionario_id).startswith('user_'):
+            # Funcionário específico selecionado
+            pass
+        else:
+            # Usar o usuário logado como funcionário
             if user_id:
                 from src.models.user import User
                 user = User.query.get(user_id)
                 if user:
-                    # Buscar funcionário com o mesmo nome do usuário (busca exata e parcial)
+                    # Buscar ou criar funcionário com o nome do usuário logado
                     funcionario_encontrado = Funcionario.query.filter(
                         db.and_(
                             Funcionario.ativo == True,
-                            db.or_(
-                                Funcionario.nome == user.username,
-                                Funcionario.nome.ilike(f'%{user.username}%')
-                            )
+                            Funcionario.nome == user.username
                         )
                     ).first()
 
                     if not funcionario_encontrado:
-                        # Criar funcionário automaticamente se não existir
+                        # Criar funcionário automaticamente com o nome do usuário
                         funcionario_encontrado = Funcionario(
                             nome=user.username,
                             cargo='Almoxarifado',
@@ -430,11 +430,22 @@ def alocar_produto():
                         db.session.add(funcionario_encontrado)
                         db.session.flush()  # Para obter o ID sem fazer commit
 
-            if funcionario_encontrado:
-                funcionario_id = funcionario_encontrado.id
+                    funcionario_id = funcionario_encontrado.id
+                else:
+                    # Fallback: criar funcionário padrão
+                    funcionario_padrao = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
+                    if not funcionario_padrao:
+                        funcionario_padrao = Funcionario(
+                            nome='Sistema',
+                            cargo='Sistema',
+                            ativo=True
+                        )
+                        db.session.add(funcionario_padrao)
+                        db.session.flush()
+                    funcionario_id = funcionario_padrao.id
             else:
-                # Como último recurso, usar funcionário padrão ou criar um
-                funcionario_padrao = Funcionario.query.filter_by(ativo=True).first()
+                # Sem usuário logado: usar funcionário Sistema
+                funcionario_padrao = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
                 if not funcionario_padrao:
                     funcionario_padrao = Funcionario(
                         nome='Sistema',
@@ -1369,7 +1380,7 @@ def atender_requisicao(requisicao_id):
         if requisicao.produto.quantidade_estoque < quantidade_atendida:
             return jsonify({'error': 'Estoque insuficiente'}), 400
 
-        # Buscar funcionário do almoxarifado
+        # Buscar funcionário do almoxarifado baseado no usuário logado
         from flask import session
         user_id = session.get('user_id')
         funcionario_id = 1  # padrão
@@ -1378,7 +1389,7 @@ def atender_requisicao(requisicao_id):
             from src.models.user import User
             user = User.query.get(user_id)
             if user:
-                # Buscar funcionário com o mesmo nome do usuário
+                # Buscar funcionário com o mesmo nome do usuário (busca exata)
                 funcionario = Funcionario.query.filter_by(nome=user.username, ativo=True).first()
                 if not funcionario:
                     # Se não existe, criar funcionário automaticamente
