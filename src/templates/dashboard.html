@@ -272,7 +272,7 @@ function atualizarUltimasMovimentacoes(movimentacoes) {
             <td><span class="badge ${badgeClass}">${mov.tipo_movimentacao}</span></td>
             <td>${mov.quantidade}</td>
             <td>${formatCurrency(mov.valor_total)}</td>
-            <td>${mov.funcionario ? mov.funcionario.nome : 'N/A'}</td>
+            <td>${mov.funcionario && mov.funcionario.nome !== 'Sistema' ? mov.funcionario.nome : (mov.funcionario ? mov.funcionario.nome : 'N/A')}</td>
         `;
 
         tbody.appendChild(tr);

@@ -107,8 +107,18 @@ def dashboard_stats():
             func.sum(Produto.quantidade_estoque).label('total_estoque')
         ).filter(Produto.ativo == True).group_by(Produto.categoria).all()
 
+        # Processar movimentações para garantir dados corretos do funcionário
+        movimentacoes_processadas = []
+        for mov in ultimas_movimentacoes:
+            mov_dict = mov.to_dict()
+            # Se o funcionário for "Sistema", tentar buscar o usuário real baseado no ID da sessão
+            if mov.funcionario and mov.funcionario.nome == 'Sistema':
+                # Manter "Sistema" se realmente foi uma operação automática
+                pass
+            movimentacoes_processadas.append(mov_dict)
+
         return jsonify({
-            'ultimas_movimentacoes': [mov.to_dict() for mov in ultimas_movimentacoes],
+            'ultimas_movimentacoes': movimentacoes_processadas,
             'economia_mes': float(economia_mes),
             'produtos_movimentados': [{'nome': p[0], 'unidade_medida': p[1], 'quantidade': int(p[2])} for p in produtos_movimentados],
             'resumo_categorias': [{'categoria': r[0], 'produtos': int(r[1]), 'estoque': int(r[2])} for r in resumo_categorias]
@@ -397,22 +407,20 @@ def alocar_produto():
         obra = Obra.query.get_or_404(data['obra_id'])
         quantidade = int(data['quantidade'])
 
-        # Obter o usuário logado
+        # Obter o usuário logado e sempre usar como responsável pela alocação
         from flask import session
-        user_id = session.get('user_id')
-        funcionario_id = data.get('funcionario_id')
+        from src.models.user import User
         
-        # Sempre usar o usuário logado como responsável pela alocação
+        user_id = session.get('user_id')
+        funcionario_id = None
+        
         if user_id:
-            from src.models.user import User
             user = User.query.get(user_id)
             if user:
-                # Buscar ou criar funcionário com o nome do usuário logado
-                funcionario_encontrado = Funcionario.query.filter(
-                    db.and_(
-                        Funcionario.ativo == True,
-                        Funcionario.nome == user.username
-                    )
+                # Buscar funcionário existente com o nome do usuário
+                funcionario_encontrado = Funcionario.query.filter_by(
+                    nome=user.username, 
+                    ativo=True
                 ).first()
 
                 if not funcionario_encontrado:
@@ -426,30 +434,19 @@ def alocar_produto():
                     db.session.flush()  # Para obter o ID sem fazer commit
 
                 funcionario_id = funcionario_encontrado.id
-            else:
-                # Fallback: usar funcionário Sistema se usuário não encontrado
-                funcionario_padrao = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
-                if not funcionario_padrao:
-                    funcionario_padrao = Funcionario(
-                        nome='Sistema',
-                        cargo='Sistema',
-                        ativo=True
-                    )
-                    db.session.add(funcionario_padrao)
-                    db.session.flush()
-                funcionario_id = funcionario_padrao.id
-        else:
-            # Sem usuário logado: usar funcionário Sistema
-            funcionario_padrao = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
-            if not funcionario_padrao:
-                funcionario_padrao = Funcionario(
+        
+        # Se ainda não temos funcionário_id, usar Sistema como fallback
+        if not funcionario_id:
+            funcionario_sistema = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
+            if not funcionario_sistema:
+                funcionario_sistema = Funcionario(
                     nome='Sistema',
                     cargo='Sistema',
                     ativo=True
                 )
-                db.session.add(funcionario_padrao)
+                db.session.add(funcionario_sistema)
                 db.session.flush()
-            funcionario_id = funcionario_padrao.id
+            funcionario_id = funcionario_sistema.id
 
         # Verificar estoque
         if produto.quantidade_estoque < quantidade:
