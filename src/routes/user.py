@@ -79,10 +79,10 @@ def logout():
 @user_bp.route('/producao')
 @login_required
 def producao_dashboard():
-    """Dashboard da produção"""
+    """Dashboard da produção - acesso restrito apenas para usuários de produção"""
     user = User.query.get(session['user_id'])
     if user.tipo_usuario != 'producao':
-        return redirect('/')
+        return redirect('/login')
     return render_template('producao_dashboard.html')
 
 @user_bp.route('/gerenciamento-usuarios')
@@ -168,4 +168,17 @@ def delete_user(user_id):
         return jsonify({'message': 'Usuário desativado com sucesso'})
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/api/user/current')
+@login_required
+def get_current_user():
+    """Retorna dados do usuário atual"""
+    try:
+        user = User.query.get(session['user_id'])
+        if user:
+            return jsonify(user.to_dict())
+        else:
+            return jsonify({'error': 'Usuário não encontrado'}), 404
+    except Exception as e:
         return jsonify({'error': str(e)}), 500

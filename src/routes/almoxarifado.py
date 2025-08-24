@@ -7,6 +7,10 @@ from src.models.almoxarifado import (
 from src.routes.user import login_required
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, and_
+from pytz import timezone
+
+# Define o fuso horário de São Paulo
+SAO_PAULO_TZ = timezone('America/Sao_Paulo')
 
 almoxarifado_bp = Blueprint('almoxarifado', __name__)
 
@@ -61,6 +65,14 @@ def estatisticas():
     """Página de estatísticas"""
     return render_template('estatisticas.html')
 
+@almoxarifado_bp.route('/requisicoes')
+@login_required
+def requisicoes():
+    """Página de gerenciamento de requisições da produção"""
+    return render_template('requisicoes.html')
+
+
+
 # ===== API ENDPOINTS =====
 
 # Dashboard APIs
@@ -82,6 +94,7 @@ def dashboard_stats():
         data_limite = datetime.now() - timedelta(days=30)
         produtos_movimentados = db.session.query(
             Produto.nome,
+            Produto.unidade_medida,
             func.sum(Movimentacao.quantidade).label('total_quantidade')
         ).join(Movimentacao).filter(
             Movimentacao.data_movimentacao >= data_limite
@@ -97,7 +110,7 @@ def dashboard_stats():
         return jsonify({
             'ultimas_movimentacoes': [mov.to_dict() for mov in ultimas_movimentacoes],
             'economia_mes': float(economia_mes),
-            'produtos_movimentados': [{'nome': p[0], 'quantidade': int(p[1])} for p in produtos_movimentados],
+            'produtos_movimentados': [{'nome': p[0], 'unidade_medida': p[1], 'quantidade': int(p[2])} for p in produtos_movimentados],
             'resumo_categorias': [{'categoria': r[0], 'produtos': int(r[1]), 'estoque': int(r[2])} for r in resumo_categorias]
         })
     except Exception as e:
@@ -259,11 +272,27 @@ def gerenciar_saldo(produto_id):
         else:
             return jsonify({'error': 'Operação inválida'}), 400
 
-        # Registrar movimentação
-        funcionario = Funcionario.query.first()  # Pegar primeiro funcionário como padrão
+        # Registrar movimentação - usar usuário logado quando possível
+        from flask import session
+        user_id = session.get('user_id')
+        funcionario_id = 1  # padrão
+
+        if user_id:
+            from src.models.user import User
+            user = User.query.get(user_id)
+            if user:
+                # Buscar funcionário com o mesmo nome do usuário
+                funcionario = Funcionario.query.filter_by(nome=user.username, ativo=True).first()
+                if funcionario:
+                    funcionario_id = funcionario.id
+                else:
+                    # Se não encontrar, usar o primeiro funcionário ativo
+                    funcionario_ativo = Funcionario.query.filter_by(ativo=True).first()
+                    funcionario_id = funcionario_ativo.id if funcionario_ativo else 1
+
         movimentacao = Movimentacao(
             produto_id=produto.id,
-            funcionario_id=funcionario.id if funcionario else 1,
+            funcionario_id=funcionario_id,
             tipo_movimentacao='ENTRADA' if operacao == 'adicionar' else 'SAIDA',
             quantidade=quantidade,
             valor_unitario=produto.preco,
@@ -322,37 +351,33 @@ def listar_obras():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@almoxarifado_bp.route('/api/obras/sugestoes', methods=['GET'])
+@almoxarifado_bp.route('/api/obras/sugestoes')
 def sugestoes_obras():
-    """Buscar sugestões de obras para autocomplete"""
+    """Retorna sugestões de obras baseadas no termo de busca"""
     try:
-        termo = request.args.get('termo', '').strip()
+        termo = request.args.get('termo', '')
 
-        if not termo or len(termo) < 1:
+        if len(termo) < 1:
             return jsonify([])
 
-        # Buscar obras que contenham o termo no nome ou número, excluindo entregues
+        # Buscar obras que não estão entregues
         obras = Obra.query.filter(
             db.and_(
                 Obra.ativa == True,
                 Obra.status != 'Entregue',
                 db.or_(
-                    Obra.nome_obra.ilike(f"%{termo}%"),
-                    Obra.numero_obra.ilike(f"%{termo}%")
+                    Obra.numero_obra.ilike(f'%{termo}%'),
+                    Obra.nome_obra.ilike(f'%{termo}%')
                 )
             )
-        ).order_by(Obra.numero_obra).limit(10).all()
+        ).limit(10).all()
 
-        sugestoes = []
-        for obra in obras:
-            sugestoes.append({
-                'id': obra.id,
-                'numero_obra': obra.numero_obra,
-                'nome_obra': obra.nome_obra,
-                'texto_completo': f"{obra.numero_obra} - {obra.nome_obra}"
-            })
+        return jsonify([{
+            'id': obra.id,
+            'numero_obra': obra.numero_obra,
+            'nome_obra': obra.nome_obra
+        } for obra in obras])
 
-        return jsonify(sugestoes)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -366,7 +391,54 @@ def alocar_produto():
         produto = Produto.query.get_or_404(data['produto_id'])
         obra = Obra.query.get_or_404(data['obra_id'])
         quantidade = int(data['quantidade'])
-        funcionario_id = data.get('funcionario_id', 1)
+
+        # Usar o funcionário selecionado ou buscar por usuário logado
+        funcionario_id = data.get('funcionario_id')
+        if not funcionario_id:
+            # Se não foi especificado funcionário, tentar encontrar baseado no usuário logado
+            from flask import session
+            user_id = session.get('user_id')
+            funcionario_encontrado = None
+
+            if user_id:
+                from src.models.user import User
+                user = User.query.get(user_id)
+                if user:
+                    # Buscar funcionário com o mesmo nome do usuário (busca exata e parcial)
+                    funcionario_encontrado = Funcionario.query.filter(
+                        db.and_(
+                            Funcionario.ativo == True,
+                            db.or_(
+                                Funcionario.nome == user.username,
+                                Funcionario.nome.ilike(f'%{user.username}%')
+                            )
+                        )
+                    ).first()
+
+                    if not funcionario_encontrado:
+                        # Criar funcionário automaticamente se não existir
+                        funcionario_encontrado = Funcionario(
+                            nome=user.username,
+                            cargo='Operador do Sistema',
+                            ativo=True
+                        )
+                        db.session.add(funcionario_encontrado)
+                        db.session.flush()  # Para obter o ID sem fazer commit
+
+            if funcionario_encontrado:
+                funcionario_id = funcionario_encontrado.id
+            else:
+                # Como último recurso, usar funcionário padrão ou criar um
+                funcionario_padrao = Funcionario.query.filter_by(ativo=True).first()
+                if not funcionario_padrao:
+                    funcionario_padrao = Funcionario(
+                        nome='Sistema',
+                        cargo='Sistema',
+                        ativo=True
+                    )
+                    db.session.add(funcionario_padrao)
+                    db.session.flush()
+                funcionario_id = funcionario_padrao.id
 
         # Verificar estoque
         if produto.quantidade_estoque < quantidade:
@@ -445,6 +517,187 @@ def historico_movimentacoes():
         return jsonify({'error': str(e)}), 500
 
 # Estatísticas APIs
+@almoxarifado_bp.route('/api/estatisticas/geral')
+def estatisticas_gerais():
+    """Estatísticas gerais com filtros de período"""
+    try:
+        # Obter parâmetros
+        periodo = request.args.get('periodo', 'mes')
+        data_inicio_param = request.args.get('data_inicio')
+        data_fim_param = request.args.get('data_fim')
+
+        # Calcular datas baseadas no período
+        agora = datetime.now()
+
+        if data_inicio_param and data_fim_param:
+            # Período customizado
+            data_inicio = datetime.strptime(data_inicio_param, '%Y-%m-%d')
+            data_fim = datetime.strptime(data_fim_param, '%Y-%m-%d') + timedelta(days=1)  # Incluir o dia inteiro
+        else:
+            # Períodos predefinidos
+            if periodo == 'dia':
+                data_inicio = agora.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif periodo == 'semana':
+                data_inicio = agora - timedelta(weeks=1)
+            elif periodo == 'mes':
+                data_inicio = agora - timedelta(days=30)
+            elif periodo == 'ano':
+                data_inicio = agora - timedelta(days=365)
+            else:  # total
+                data_inicio = datetime(2020, 1, 1)  # Data muito antiga para pegar tudo
+
+            data_fim = agora
+
+        # Query base de movimentações de alocação no período
+        query_base = Movimentacao.query.filter(
+            Movimentacao.tipo_movimentacao == 'ALOCACAO',
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        )
+
+        # Estatísticas básicas
+        movimentacoes = query_base.all()
+        total_alocacoes = len(movimentacoes)
+        economia_total = sum(mov.valor_total for mov in movimentacoes)
+
+        # Produtos mais usados
+        produtos_mais_usados = db.session.query(
+            Produto.codigo,
+            Produto.nome,
+            Produto.categoria,
+            func.sum(Movimentacao.quantidade).label('quantidade'),
+            func.sum(Movimentacao.valor_total).label('valor'),
+            func.max(Movimentacao.data_movimentacao).label('ultima_alocacao')
+        ).join(Movimentacao).filter(
+            Movimentacao.tipo_movimentacao == 'ALOCACAO',
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        ).group_by(Produto.id).order_by(desc('quantidade')).limit(10).all()
+
+        # Ranking de funcionários
+        ranking_funcionarios = db.session.query(
+            Funcionario.nome,
+            func.count(Movimentacao.id).label('movimentacoes'),
+            func.sum(Movimentacao.valor_total).label('valor')
+        ).join(Movimentacao).filter(
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        ).group_by(Funcionario.id).order_by(desc('valor')).all()
+
+        # Obras atendidas
+        obras_atendidas = db.session.query(func.count(func.distinct(Movimentacao.obra_id))).filter(
+            Movimentacao.tipo_movimentacao == 'ALOCACAO',
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        ).scalar() or 0
+
+        # Produtos diferentes
+        produtos_diferentes = db.session.query(func.count(func.distinct(Movimentacao.produto_id))).filter(
+            Movimentacao.tipo_movimentacao == 'ALOCACAO',
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        ).scalar() or 0
+
+        # Maior alocação e média
+        maior_alocacao = db.session.query(func.max(Movimentacao.valor_total)).filter(
+            Movimentacao.tipo_movimentacao == 'ALOCACAO',
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        ).scalar() or 0
+
+        media_alocacao = economia_total / total_alocacoes if total_alocacoes > 0 else 0
+
+        # Primeira e última movimentação
+        primeira_mov = db.session.query(func.min(Movimentacao.data_movimentacao)).filter(
+            Movimentacao.tipo_movimentacao == 'ALOCACAO',
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        ).scalar()
+
+        ultima_mov = db.session.query(func.max(Movimentacao.data_movimentacao)).filter(
+            Movimentacao.tipo_movimentacao == 'ALOCACAO',
+            Movimentacao.data_movimentacao >= data_inicio,
+            Movimentacao.data_movimentacao <= data_fim
+        ).scalar()
+
+        # Economia temporal (para gráfico)
+        economia_temporal = []
+        if periodo == 'dia':
+            # Agrupar por hora
+            for i in range(24):
+                hora_inicio = data_inicio.replace(hour=i, minute=0, second=0, microsecond=0)
+                hora_fim = hora_inicio + timedelta(hours=1)
+                valor = db.session.query(func.sum(Movimentacao.valor_total)).filter(
+                    Movimentacao.tipo_movimentacao == 'ALOCACAO',
+                    Movimentacao.data_movimentacao >= hora_inicio,
+                    Movimentacao.data_movimentacao < hora_fim
+                ).scalar() or 0
+                economia_temporal.append({
+                    'periodo': f"{i:02d}:00",
+                    'valor': float(valor)
+                })
+        elif periodo == 'semana':
+            # Agrupar por dia
+            for i in range(7):
+                dia = data_inicio + timedelta(days=i)
+                dia_inicio = dia.replace(hour=0, minute=0, second=0, microsecond=0)
+                dia_fim = dia_inicio + timedelta(days=1)
+                valor = db.session.query(func.sum(Movimentacao.valor_total)).filter(
+                    Movimentacao.tipo_movimentacao == 'ALOCACAO',
+                    Movimentacao.data_movimentacao >= dia_inicio,
+                    Movimentacao.data_movimentacao < dia_fim
+                ).scalar() or 0
+                economia_temporal.append({
+                    'periodo': dia.strftime('%d/%m'),
+                    'valor': float(valor)
+                })
+        else:
+            # Agrupar por mês (últimos 12 meses)
+            for i in range(12):
+                mes_inicio = (agora.replace(day=1) - timedelta(days=30*i)).replace(day=1)
+                mes_fim = (mes_inicio + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+                valor = db.session.query(func.sum(Movimentacao.valor_total)).filter(
+                    Movimentacao.tipo_movimentacao == 'ALOCACAO',
+                    Movimentacao.data_movimentacao >= mes_inicio,
+                    Movimentacao.data_movimentacao <= mes_fim
+                ).scalar() or 0
+
+                economia_temporal.append({
+                    'periodo': mes_inicio.strftime('%m/%Y'),
+                    'valor': float(valor)
+                })
+
+        # Reverter para ordem cronológica
+        economia_temporal.reverse()
+
+        return jsonify({
+            'economia_total': float(economia_total),
+            'total_alocacoes': total_alocacoes,
+            'media_alocacao': float(media_alocacao),
+            'maior_alocacao': float(maior_alocacao),
+            'produtos_diferentes': produtos_diferentes,
+            'obras_atendidas': obras_atendidas,
+            'primeira_movimentacao': primeira_mov.isoformat() if primeira_mov else None,
+            'ultima_movimentacao': ultima_mov.isoformat() if ultima_mov else None,
+            'produtos_mais_usados': [{
+                'codigo': p[0],
+                'nome': p[1],
+                'categoria': p[2],
+                'quantidade': int(p[3]),
+                'valor': float(p[4]),
+                'ultima_alocacao': p[5].isoformat() if p[5] else None
+            } for p in produtos_mais_usados],
+            'ranking_funcionarios': [{
+                'nome': f[0],
+                'movimentacoes': int(f[1]),
+                'valor': float(f[2]) if f[2] else 0
+            } for f in ranking_funcionarios],
+            'economia_temporal': economia_temporal
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @almoxarifado_bp.route('/api/estatisticas/produtos-mais-usados')
 def produtos_mais_usados():
     """Produtos mais utilizados"""
@@ -653,12 +906,39 @@ def usuario_logado():
         if not user:
             return jsonify({'error': 'Usuário não encontrado'}), 404
 
+        # Buscar funcionário correspondente
+        funcionario = Funcionario.query.filter(
+            db.and_(
+                Funcionario.ativo == True,
+                db.or_(
+                    Funcionario.nome == user.username,
+                    Funcionario.nome.ilike(f'%{user.username}%')
+                )
+            )
+        ).first()
+
         return jsonify({
             'id': user.id,
             'username': user.username,
             'email': user.email,
-            'tipo_usuario': user.tipo_usuario
+            'tipo_usuario': user.tipo_usuario,
+            'funcionario_id': funcionario.id if funcionario else None,
+            'funcionario_nome': funcionario.nome if funcionario else None
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/debug/funcionarios')
+def debug_funcionarios():
+    """Debug: Listar todos os funcionários para verificação"""
+    try:
+        funcionarios = Funcionario.query.all()
+        return jsonify([{
+            'id': f.id,
+            'nome': f.nome,
+            'cargo': f.cargo,
+            'ativo': f.ativo
+        } for f in funcionarios])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -928,6 +1208,240 @@ def validar_nome_fornecedor():
         return jsonify({'error': str(e)}), 500
 
 
+# ===== APIs PARA PRODUÇÃO =====
+
+@almoxarifado_bp.route('/api/producao/dashboard/stats')
+def producao_dashboard_stats():
+    """Estatísticas para o dashboard da produção"""
+    try:
+        from flask import session
+        from src.models.almoxarifado import Requisicao
+
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Usuário não logado'}), 401
+
+        # Total de produtos ativos
+        total_produtos = Produto.query.filter_by(ativo=True).count()
+
+        # Minhas requisições
+        minhas_requisicoes = Requisicao.query.filter_by(usuario_id=user_id).count()
+
+        # Requisições pendentes (minhas)
+        requisicoes_pendentes = Requisicao.query.filter_by(
+            usuario_id=user_id,
+            status='PENDENTE'
+        ).count()
+
+        # Valor total em estoque
+        valor_estoque = db.session.query(
+            func.sum(Produto.preco * Produto.quantidade_estoque)
+        ).filter(Produto.ativo == True).scalar() or 0
+
+        return jsonify({
+            'total_produtos': total_produtos,
+            'minhas_requisicoes': minhas_requisicoes,
+            'requisicoes_pendentes': requisicoes_pendentes,
+            'valor_estoque': float(valor_estoque)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/producao/requisicoes', methods=['POST'])
+def criar_requisicao():
+    """Criar nova requisição da produção"""
+    try:
+        from flask import session
+        from src.models.almoxarifado import Requisicao
+
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Usuário não logado'}), 401
+
+        data = request.get_json()
+
+        produto = Produto.query.get_or_404(data['produto_id'])
+        obra = Obra.query.get_or_404(data['obra_id'])
+        quantidade = float(data['quantidade'])
+
+        # Verificar se há estoque suficiente
+        if produto.quantidade_estoque < quantidade:
+            return jsonify({
+                'error': f'Estoque insuficiente. Disponível: {produto.quantidade_estoque}'
+            }), 400
+
+        # Criar requisição
+        requisicao = Requisicao(
+            produto_id=produto.id,
+            obra_id=obra.id,
+            usuario_id=user_id,
+            quantidade_solicitada=quantidade,
+            observacoes=data.get('observacoes', '')
+        )
+
+        db.session.add(requisicao)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Requisição criada com sucesso',
+            'requisicao': requisicao.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/producao/minhas-requisicoes')
+def minhas_requisicoes():
+    """Listar requisições do usuário logado"""
+    try:
+        from flask import session
+        from src.models.almoxarifado import Requisicao
+
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Usuário não logado'}), 401
+
+        status = request.args.get('status')
+
+        query = Requisicao.query.filter_by(usuario_id=user_id)
+
+        if status:
+            query = query.filter_by(status=status)
+
+        requisicoes = query.order_by(desc(Requisicao.data_requisicao)).all()
+
+        return jsonify([req.to_dict() for req in requisicoes])
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/almoxarifado/requisicoes')
+def listar_requisicoes_almoxarifado():
+    """Listar requisições para o almoxarifado atender"""
+    try:
+        from src.models.almoxarifado import Requisicao
+        from src.models.user import User
+
+        status = request.args.get('status', 'PENDENTE')
+
+        query = Requisicao.query
+
+        if status:
+            query = query.filter_by(status=status)
+
+        requisicoes = query.order_by(desc(Requisicao.data_requisicao)).all()
+
+        # Adicionar informações do usuário que fez a requisição
+        resultado = []
+        for req in requisicoes:
+            req_dict = req.to_dict()
+            usuario = User.query.get(req.usuario_id)
+            req_dict['usuario_nome'] = usuario.username if usuario else 'Usuário não encontrado'
+            resultado.append(req_dict)
+
+        return jsonify(resultado)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/almoxarifado/requisicoes/<int:requisicao_id>/atender', methods=['POST'])
+def atender_requisicao(requisicao_id):
+    """Atender uma requisição (total ou parcial)"""
+    try:
+        from src.models.almoxarifado import Requisicao
+
+        data = request.get_json()
+        requisicao = Requisicao.query.get_or_404(requisicao_id)
+
+        if requisicao.status != 'PENDENTE':
+            return jsonify({'error': 'Requisição já foi atendida'}), 400
+
+        quantidade_atendida = float(data.get('quantidade_atendida', requisicao.quantidade_solicitada))
+        observacoes_atendimento = data.get('observacoes_atendimento', '')
+
+        # Verificar estoque
+        if requisicao.produto.quantidade_estoque < quantidade_atendida:
+            return jsonify({'error': 'Estoque insuficiente'}), 400
+
+        # Buscar funcionário do almoxarifado
+        from flask import session
+        user_id = session.get('user_id')
+        funcionario_id = 1  # padrão
+
+        if user_id:
+            from src.models.user import User
+            user = User.query.get(user_id)
+            if user:
+                funcionario = Funcionario.query.filter_by(nome=user.username, ativo=True).first()
+                if funcionario:
+                    funcionario_id = funcionario.id
+
+        # Atualizar estoque
+        requisicao.produto.quantidade_estoque -= quantidade_atendida
+
+        # Atualizar requisição
+        requisicao.quantidade_atendida = quantidade_atendida
+        requisicao.data_atendimento = datetime.now(SAO_PAULO_TZ)
+        requisicao.observacoes_atendimento = observacoes_atendimento
+        requisicao.atendido_por = funcionario_id
+
+        # Definir status
+        if quantidade_atendida >= requisicao.quantidade_solicitada:
+            requisicao.status = 'ATENDIDA'
+        else:
+            requisicao.status = 'PARCIAL'
+
+        # Registrar movimentação
+        movimentacao = Movimentacao(
+            produto_id=requisicao.produto_id,
+            obra_id=requisicao.obra_id,
+            funcionario_id=funcionario_id,
+            tipo_movimentacao='ALOCACAO',
+            quantidade=quantidade_atendida,
+            valor_unitario=requisicao.produto.preco,
+            valor_total=requisicao.produto.preco * quantidade_atendida,
+            observacoes=f'Atendimento de requisição #{requisicao.id} - {observacoes_atendimento}'
+        )
+
+        db.session.add(movimentacao)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Requisição atendida com sucesso',
+            'requisicao': requisicao.to_dict()
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@almoxarifado_bp.route('/api/almoxarifado/requisicoes/<int:requisicao_id>/cancelar', methods=['POST'])
+def cancelar_requisicao(requisicao_id):
+    """Cancelar uma requisição"""
+    try:
+        from src.models.almoxarifado import Requisicao
+
+        data = request.get_json()
+        requisicao = Requisicao.query.get_or_404(requisicao_id)
+
+        if requisicao.status != 'PENDENTE':
+            return jsonify({'error': 'Apenas requisições pendentes podem ser canceladas'}), 400
+
+        requisicao.status = 'CANCELADA'
+        requisicao.observacoes_atendimento = data.get('motivo_cancelamento', 'Cancelada pelo almoxarifado')
+
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Requisição cancelada com sucesso',
+            'requisicao': requisicao.to_dict()
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 # ===== ROTA PARA EXPORTAÇÃO =====
 
 @almoxarifado_bp.route('/api/estoque/exportar')
@@ -1010,7 +1524,7 @@ def editar_obra(obra_id):
         obra.status = data.get("status", obra.status)
 
         if obra.status == "Entregue" and not obra.data_entrega:
-            obra.data_entrega = datetime.now()
+            obra.data_entrega = datetime.now(SAO_PAULO_TZ)
         elif obra.status != "Entregue" and obra.data_entrega:
             obra.data_entrega = None
 

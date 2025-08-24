@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Estatísticas - Sistema de Almoxarifado{% endblock %}
@@ -11,6 +12,51 @@
     </div>
 </div>
 
+<!-- Filtros de Período -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-funnel"></i> Filtros de Período
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="filtro-periodo" class="form-label">Período</label>
+                        <select class="form-select" id="filtro-periodo" onchange="aplicarFiltroPeriodo()">
+                            <option value="dia">Hoje</option>
+                            <option value="semana">Última semana</option>
+                            <option value="mes" selected>Último mês</option>
+                            <option value="ano">Último ano</option>
+                            <option value="total">Total (Histórico completo)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="data-inicio" class="form-label">Data Início (Personalizada)</label>
+                        <input type="date" class="form-control" id="data-inicio">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label for="data-fim" class="form-label">Data Fim (Personalizada)</label>
+                        <input type="date" class="form-control" id="data-fim">
+                    </div>
+                    
+                    <div class="col-md-3 mb-3 d-flex align-items-end">
+                        <div class="d-grid gap-2 w-100">
+                            <button type="button" class="btn btn-primary" onclick="aplicarPeriodoCustomizado()">
+                                <i class="bi bi-search"></i> Aplicar Período
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Cards de Economia -->
 <div class="row mb-4">
     <div class="col-md-4 mb-3">
@@ -21,14 +67,14 @@
     </div>
     <div class="col-md-4 mb-3">
         <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <div class="stats-number" id="economia-mes">R$ 0,00</div>
-            <div class="stats-label">Economia do Mês</div>
+            <div class="stats-number" id="total-alocacoes">0</div>
+            <div class="stats-label">Total de Alocações</div>
         </div>
     </div>
     <div class="col-md-4 mb-3">
         <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
             <div class="stats-number" id="economia-media">R$ 0,00</div>
-            <div class="stats-label">Economia Média Mensal</div>
+            <div class="stats-label">Valor Médio por Alocação</div>
         </div>
     </div>
 </div>
@@ -39,7 +85,7 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="bi bi-bar-chart"></i> Top 10 Produtos Mais Utilizados (Últimos 30 dias)
+                    <i class="bi bi-bar-chart"></i> Top 10 Produtos Mais Utilizados <span id="periodo-titulo">(Último mês)</span>
                 </h5>
             </div>
             <div class="card-body">
@@ -66,12 +112,12 @@
 </div>
 
 <div class="row">
-    <!-- Gráfico de Economia Mensal -->
+    <!-- Gráfico de Economia por Período -->
     <div class="col-lg-8 mb-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="bi bi-graph-up-arrow"></i> Evolução da Economia (Últimos 12 meses)
+                    <i class="bi bi-graph-up-arrow"></i> Evolução da Economia
                 </h5>
             </div>
             <div class="card-body">
@@ -93,7 +139,7 @@
                     <h6>Movimentações</h6>
                     <div class="d-flex justify-content-between">
                         <span>Total de Alocações:</span>
-                        <strong id="total-alocacoes">0</strong>
+                        <strong id="total-alocacoes-detalhe">0</strong>
                     </div>
                     <div class="d-flex justify-content-between">
                         <span>Produtos Diferentes:</span>
@@ -133,43 +179,13 @@
     </div>
 </div>
 
-<div class="row">
-    <!-- Análise por Categoria -->
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-pie-chart"></i> Economia por Categoria
-                </h5>
-            </div>
-            <div class="card-body">
-                <canvas id="graficoCategoria" height="200"></canvas>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Análise por Obra -->
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-building"></i> Top 5 Obras por Valor
-                </h5>
-            </div>
-            <div class="card-body">
-                <canvas id="graficoObras" height="200"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Tabela de Produtos Mais Valiosos -->
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="bi bi-gem"></i> Top 20 Produtos por Valor Economizado
+                    <i class="bi bi-gem"></i> Produtos por Valor Economizado <span id="periodo-tabela">(Último mês)</span>
                 </h5>
             </div>
             <div class="card-body">
@@ -202,36 +218,95 @@
 
 {% block extra_js %}
 <script>
-let graficoProdutosMaisUsados, graficoEconomiaMensal, graficoCategoria, graficoObras;
+let graficoProdutosMaisUsados, graficoEconomiaMensal;
+let periodoAtual = 'mes';
+let dataInicio = null;
+let dataFim = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     carregarEstatisticas();
 });
 
+function aplicarFiltroPeriodo() {
+    periodoAtual = document.getElementById('filtro-periodo').value;
+    dataInicio = null;
+    dataFim = null;
+    atualizarTitulosPeriodo();
+    carregarEstatisticas();
+}
+
+function aplicarPeriodoCustomizado() {
+    const inicio = document.getElementById('data-inicio').value;
+    const fim = document.getElementById('data-fim').value;
+    
+    if (!inicio || !fim) {
+        showAlert('Por favor, selecione ambas as datas', 'warning');
+        return;
+    }
+    
+    if (new Date(inicio) > new Date(fim)) {
+        showAlert('Data de início deve ser anterior à data de fim', 'warning');
+        return;
+    }
+    
+    dataInicio = inicio;
+    dataFim = fim;
+    periodoAtual = 'customizado';
+    atualizarTitulosPeriodo();
+    carregarEstatisticas();
+}
+
+function atualizarTitulosPeriodo() {
+    let titulo = '';
+    switch(periodoAtual) {
+        case 'dia': titulo = '(Hoje)'; break;
+        case 'semana': titulo = '(Última semana)'; break;
+        case 'mes': titulo = '(Último mês)'; break;
+        case 'ano': titulo = '(Último ano)'; break;
+        case 'total': titulo = '(Total)'; break;
+        case 'customizado': 
+            titulo = `(${formatDateBR(dataInicio)} - ${formatDateBR(dataFim)})`;
+            break;
+    }
+    
+    document.getElementById('periodo-titulo').textContent = titulo;
+    document.getElementById('periodo-tabela').textContent = titulo;
+}
+
+function formatDateBR(dateStr) {
+    if (!dateStr) return '';
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
+}
+
 async function carregarEstatisticas() {
     try {
-        // Carregar dados de economia
-        const economiaResponse = await fetch('/api/estatisticas/economia-total');
-        const economiaData = await economiaResponse.json();
+        // Montar URL com parâmetros de período
+        let url = '/api/estatisticas/geral';
+        const params = new URLSearchParams();
         
-        // Carregar produtos mais usados
-        const produtosResponse = await fetch('/api/estatisticas/produtos-mais-usados');
-        const produtosData = await produtosResponse.json();
-        
-        // Carregar estatísticas de funcionários
-        const funcionariosResponse = await fetch('/api/estatisticas/funcionarios');
-        const funcionariosData = await funcionariosResponse.json();
-        
-        if (economiaResponse.ok && produtosResponse.ok && funcionariosResponse.ok) {
-            atualizarCardsEconomia(economiaData);
-            criarGraficoProdutosMaisUsados(produtosData);
-            criarGraficoEconomiaMensal(economiaData.economia_mensal);
-            atualizarRankingFuncionarios(funcionariosData);
-            criarGraficosAdicionais(produtosData);
-            atualizarEstatisticasDetalhadas(produtosData, economiaData);
-            atualizarTabelaProdutosValiosos(produtosData);
+        if (periodoAtual === 'customizado' && dataInicio && dataFim) {
+            params.append('data_inicio', dataInicio);
+            params.append('data_fim', dataFim);
         } else {
-            showAlert('Erro ao carregar estatísticas', 'danger');
+            params.append('periodo', periodoAtual);
+        }
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (response.ok) {
+            atualizarCardsEconomia(data);
+            criarGraficoProdutosMaisUsados(data.produtos_mais_usados || []);
+            criarGraficoEconomiaMensal(data.economia_temporal || []);
+            atualizarRankingFuncionarios(data.ranking_funcionarios || []);
+            atualizarEstatisticasDetalhadas(data);
+            atualizarTabelaProdutosValiosos(data.produtos_mais_usados || []);
+        } else {
+            showAlert('Erro ao carregar estatísticas: ' + data.error, 'danger');
         }
     } catch (error) {
         showAlert('Erro de conexão: ' + error.message, 'danger');
@@ -239,26 +314,31 @@ async function carregarEstatisticas() {
 }
 
 function atualizarCardsEconomia(data) {
-    document.getElementById('economia-total').textContent = formatCurrency(data.economia_total);
+    document.getElementById('economia-total').textContent = formatCurrency(data.economia_total || 0);
+    document.getElementById('total-alocacoes').textContent = data.total_alocacoes || 0;
     
-    // Calcular economia do mês atual
-    const mesAtual = new Date().toISOString().slice(0, 7);
-    const economiaMes = data.economia_mensal.find(m => m.mes === mesAtual);
-    document.getElementById('economia-mes').textContent = 
-        formatCurrency(economiaMes ? economiaMes.valor : 0);
-    
-    // Calcular média mensal
-    const totalMeses = data.economia_mensal.filter(m => m.valor > 0).length;
-    const media = totalMeses > 0 ? data.economia_total / totalMeses : 0;
+    const media = data.total_alocacoes > 0 ? (data.economia_total / data.total_alocacoes) : 0;
     document.getElementById('economia-media').textContent = formatCurrency(media);
 }
 
 function criarGraficoProdutosMaisUsados(produtos) {
     const ctx = document.getElementById('graficoProdutosMaisUsados').getContext('2d');
     
+    if (graficoProdutosMaisUsados) {
+        graficoProdutosMaisUsados.destroy();
+    }
+    
+    if (!produtos || produtos.length === 0) {
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#6c757d';
+        ctx.textAlign = 'center';
+        ctx.fillText('Nenhum dado disponível para o período selecionado', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        return;
+    }
+    
     const labels = produtos.map(p => p.codigo);
-    const quantidades = produtos.map(p => p.quantidade);
-    const valores = produtos.map(p => p.valor);
+    const quantidades = produtos.map(p => p.quantidade || 0);
+    const valores = produtos.map(p => p.valor || 0);
     
     graficoProdutosMaisUsados = new Chart(ctx, {
         type: 'bar',
@@ -323,21 +403,30 @@ function criarGraficoProdutosMaisUsados(produtos) {
     });
 }
 
-function criarGraficoEconomiaMensal(economiaMensal) {
+function criarGraficoEconomiaMensal(economiaTemporal) {
     const ctx = document.getElementById('graficoEconomiaMensal').getContext('2d');
     
-    const labels = economiaMensal.map(m => {
-        const [ano, mes] = m.mes.split('-');
-        return new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-    });
-    const valores = economiaMensal.map(m => m.valor);
+    if (graficoEconomiaMensal) {
+        graficoEconomiaMensal.destroy();
+    }
+    
+    if (!economiaTemporal || economiaTemporal.length === 0) {
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#6c757d';
+        ctx.textAlign = 'center';
+        ctx.fillText('Nenhum dado disponível para o período selecionado', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        return;
+    }
+    
+    const labels = economiaTemporal.map(e => e.periodo);
+    const valores = economiaTemporal.map(e => e.valor || 0);
     
     graficoEconomiaMensal = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Economia Mensal (R$)',
+                label: 'Economia por Período (R$)',
                 data: valores,
                 borderColor: '#27ae60',
                 backgroundColor: 'rgba(39, 174, 96, 0.1)',
@@ -372,12 +461,12 @@ function atualizarRankingFuncionarios(funcionarios) {
     const container = document.getElementById('ranking-funcionarios');
     container.innerHTML = '';
     
-    if (funcionarios.length === 0) {
+    if (!funcionarios || funcionarios.length === 0) {
         container.innerHTML = '<p class="text-muted text-center">Nenhum dado disponível</p>';
         return;
     }
     
-    funcionarios.forEach((funcionario, index) => {
+    funcionarios.slice(0, 10).forEach((funcionario, index) => {
         const item = document.createElement('div');
         item.className = 'border-bottom pb-2 mb-2';
         
@@ -390,7 +479,7 @@ function atualizarRankingFuncionarios(funcionarios) {
                     <small class="text-muted">${funcionario.movimentacoes} movimentações</small>
                 </div>
                 <div class="text-end">
-                    <strong>${formatCurrency(funcionario.valor)}</strong>
+                    <strong>${formatCurrency(funcionario.valor || 0)}</strong>
                 </div>
             </div>
         `;
@@ -399,146 +488,33 @@ function atualizarRankingFuncionarios(funcionarios) {
     });
 }
 
-function criarGraficosAdicionais(produtos) {
-    // Gráfico por categoria (simulado)
-    const ctxCategoria = document.getElementById('graficoCategoria').getContext('2d');
+function atualizarEstatisticasDetalhadas(data) {
+    document.getElementById('total-alocacoes-detalhe').textContent = data.total_alocacoes || 0;
+    document.getElementById('produtos-diferentes').textContent = data.produtos_diferentes || 0;
+    document.getElementById('obras-atendidas').textContent = data.obras_atendidas || 0;
+    document.getElementById('maior-alocacao').textContent = formatCurrency(data.maior_alocacao || 0);
+    document.getElementById('media-alocacao').textContent = formatCurrency(data.media_alocacao || 0);
     
-    // Agrupar produtos por categoria
-    const categorias = {};
-    produtos.forEach(produto => {
-        // Simular categoria baseada no código
-        const categoria = produto.codigo.startsWith('P00') ? 
-            (parseInt(produto.codigo.slice(-1)) % 3 === 0 ? 'Curva A' : 
-             parseInt(produto.codigo.slice(-1)) % 3 === 1 ? 'Curva B' : 'Curva C') : 'Curva A';
-        
-        if (!categorias[categoria]) {
-            categorias[categoria] = 0;
-        }
-        categorias[categoria] += produto.valor;
-    });
+    const primeiraData = data.primeira_movimentacao ? 
+        new Date(data.primeira_movimentacao).toLocaleDateString('pt-BR') : '-';
+    const ultimaData = data.ultima_movimentacao ? 
+        new Date(data.ultima_movimentacao).toLocaleDateString('pt-BR') : '-';
     
-    graficoCategoria = new Chart(ctxCategoria, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(categorias),
-            datasets: [{
-                data: Object.values(categorias),
-                backgroundColor: ['#e74c3c', '#f39c12', '#27ae60'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-    
-    // Gráfico por obras (simulado)
-    const ctxObras = document.getElementById('graficoObras').getContext('2d');
-    
-    // Simular dados de obras
-    const obras = ['OB001', 'OB002', 'OB003', 'OB004', 'OB005'];
-    const valoresObras = obras.map(() => Math.random() * 10000 + 5000);
-    
-    graficoObras = new Chart(ctxObras, {
-        type: 'bar',
-        data: {
-            labels: obras,
-            datasets: [{
-                label: 'Valor Economizado (R$)',
-                data: valoresObras,
-                backgroundColor: [
-                    'rgba(52, 152, 219, 0.8)',
-                    'rgba(46, 204, 113, 0.8)',
-                    'rgba(155, 89, 182, 0.8)',
-                    'rgba(241, 196, 15, 0.8)',
-                    'rgba(230, 126, 34, 0.8)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toLocaleString('pt-BR');
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function atualizarEstatisticasDetalhadas(produtos, economia) {
-    const totalAlocacoes = produtos.reduce((sum, p) => sum + p.quantidade, 0);
-    const produtosDiferentes = produtos.length;
-    const obrasAtendidas = 5; // Simulado
-    
-    const maiorAlocacao = Math.max(...produtos.map(p => p.valor));
-    const mediaAlocacao = produtos.length > 0 ? 
-        produtos.reduce((sum, p) => sum + p.valor, 0) / produtos.length : 0;
-    
-    document.getElementById('total-alocacoes').textContent = totalAlocacoes;
-    document.getElementById('produtos-diferentes').textContent = produtosDiferentes;
-    document.getElementById('obras-atendidas').textContent = obrasAtendidas;
-    document.getElementById('maior-alocacao').textContent = formatCurrency(maiorAlocacao);
-    document.getElementById('media-alocacao').textContent = formatCurrency(mediaAlocacao);
-    
-    // Simular datas
-    const hoje = new Date();
-    const primeiraData = new Date(hoje.getTime() - (90 * 24 * 60 * 60 * 1000));
-    
-    document.getElementById('primeira-movimentacao').textContent = 
-        primeiraData.toLocaleDateString('pt-BR');
-    document.getElementById('ultima-movimentacao').textContent = 
-        hoje.toLocaleDateString('pt-BR');
+    document.getElementById('primeira-movimentacao').textContent = primeiraData;
+    document.getElementById('ultima-movimentacao').textContent = ultimaData;
 }
 
 function atualizarTabelaProdutosValiosos(produtos) {
     const tbody = document.getElementById('tabela-produtos-valiosos');
     tbody.innerHTML = '';
     
-    if (produtos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum produto encontrado</td></tr>';
+    if (!produtos || produtos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum produto encontrado no período selecionado</td></tr>';
         return;
     }
     
-    // Ordenar por valor e pegar os top 20
-    const produtosOrdenados = produtos
-        .sort((a, b) => b.valor - a.valor)
-        .slice(0, 20);
-    
-    produtosOrdenados.forEach((produto, index) => {
+    produtos.slice(0, 20).forEach((produto, index) => {
         const tr = document.createElement('tr');
-        
-        // Simular categoria e data
-        const categoria = produto.codigo.startsWith('P00') ? 
-            (parseInt(produto.codigo.slice(-1)) % 3 === 0 ? 'Curva A' : 
-             parseInt(produto.codigo.slice(-1)) % 3 === 1 ? 'Curva B' : 'Curva C') : 'Curva A';
-        
-        const ultimaAlocacao = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-        const valorMedio = produto.quantidade > 0 ? produto.valor / produto.quantidade : 0;
-        
-        let badgeCategoria = 'bg-primary';
-        if (categoria === 'Curva A') badgeCategoria = 'bg-danger';
-        else if (categoria === 'Curva B') badgeCategoria = 'bg-warning';
-        else if (categoria === 'Curva C') badgeCategoria = 'bg-success';
         
         const posicao = index + 1;
         let medalha = '';
@@ -546,15 +522,19 @@ function atualizarTabelaProdutosValiosos(produtos) {
         else if (posicao === 2) medalha = '🥈';
         else if (posicao === 3) medalha = '🥉';
         
+        const valorMedio = produto.quantidade > 0 ? (produto.valor / produto.quantidade) : 0;
+        const ultimaAlocacao = produto.ultima_alocacao ? 
+            new Date(produto.ultima_alocacao).toLocaleDateString('pt-BR') : '-';
+        
         tr.innerHTML = `
             <td><strong>${medalha} ${posicao}º</strong></td>
             <td><strong>${produto.codigo}</strong></td>
             <td>${produto.nome}</td>
-            <td><span class="badge ${badgeCategoria}">${categoria}</span></td>
-            <td>${produto.quantidade}</td>
-            <td><strong>${formatCurrency(produto.valor)}</strong></td>
+            <td><span class="badge bg-primary">${produto.categoria || 'N/A'}</span></td>
+            <td>${produto.quantidade || 0}</td>
+            <td><strong>${formatCurrency(produto.valor || 0)}</strong></td>
             <td>${formatCurrency(valorMedio)}</td>
-            <td>${ultimaAlocacao.toLocaleDateString('pt-BR')}</td>
+            <td>${ultimaAlocacao}</td>
         `;
         
         tbody.appendChild(tr);
@@ -562,4 +542,3 @@ function atualizarTabelaProdutosValiosos(produtos) {
 }
 </script>
 {% endblock %}
-

@@ -279,6 +279,26 @@ function atualizarUltimasMovimentacoes(movimentacoes) {
     });
 }
 
+function formatarQuantidadeComUnidade(quantidade, unidade) {
+    const sufixos = {
+        'unidade': 'unidade(s)',
+        'kilo': 'Kg',
+        'pacote': 'pacote(s)',
+        'metros': 'm',
+        'cento': 'cento(s)'
+    };
+    
+    const sufixo = sufixos[unidade] || 'unidade(s)';
+    
+    // Formatar número baseado na unidade
+    if (unidade === 'unidade' || unidade === 'pacote') {
+        return `${Math.floor(quantidade)} ${sufixo}`;
+    } else {
+        const valorFormatado = parseFloat(quantidade).toFixed(quantidade % 1 === 0 ? 0 : 3);
+        return `${valorFormatado} ${sufixo}`;
+    }
+}
+
 function atualizarProdutosTop(produtos) {
     const container = document.getElementById('produtos-top');
     container.innerHTML = '';
@@ -293,11 +313,15 @@ function atualizarProdutosTop(produtos) {
         item.className = 'list-group-item d-flex justify-content-between align-items-center';
 
         const medalha = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}º`;
+        
+        // Formatação da unidade de medida
+        const unidadeMedida = produto.unidade_medida || 'unidade';
+        const quantidadeFormatada = formatarQuantidadeComUnidade(produto.quantidade, unidadeMedida);
 
         item.innerHTML = `
             <div>
                 <strong>${medalha} ${produto.nome}</strong><br>
-                <small class="text-muted">${produto.quantidade} unidades</small>
+                <small class="text-muted">${quantidadeFormatada}</small>
             </div>
             <span class="badge bg-primary rounded-pill">${produto.quantidade}</span>
         `;

@@ -169,6 +169,48 @@ class Funcionario(db.Model):
             'ativo': self.ativo
         }
 
+class Requisicao(db.Model):
+    __tablename__ = 'requisicoes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
+    obra_id = db.Column(db.Integer, db.ForeignKey('obras.id'), nullable=False)
+    usuario_id = db.Column(db.Integer, nullable=False)  # ID do usuário que fez a requisição
+    quantidade_solicitada = db.Column(db.Float, nullable=False)
+    quantidade_atendida = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(20), default='PENDENTE')  # PENDENTE, ATENDIDA, PARCIAL, CANCELADA
+    data_requisicao = db.Column(db.DateTime, default=lambda: datetime.now(SAO_PAULO_TZ))
+    data_atendimento = db.Column(db.DateTime, nullable=True)
+    observacoes = db.Column(db.Text)
+    observacoes_atendimento = db.Column(db.Text)
+    atendido_por = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=True)
+
+    # Relacionamentos
+    produto = db.relationship('Produto', backref='requisicoes')
+    obra = db.relationship('Obra', backref='requisicoes')
+    funcionario_atendente = db.relationship('Funcionario', backref='requisicoes_atendidas')
+
+    def __repr__(self):
+        return f'<Requisicao {self.id} - {self.status}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'produto_id': self.produto_id,
+            'obra_id': self.obra_id,
+            'usuario_id': self.usuario_id,
+            'quantidade_solicitada': self.quantidade_solicitada,
+            'quantidade_atendida': self.quantidade_atendida,
+            'status': self.status,
+            'data_requisicao': self.data_requisicao.isoformat() if self.data_requisicao else None,
+            'data_atendimento': self.data_atendimento.isoformat() if self.data_atendimento else None,
+            'observacoes': self.observacoes,
+            'observacoes_atendimento': self.observacoes_atendimento,
+            'produto': self.produto.to_dict() if self.produto else None,
+            'obra': self.obra.to_dict() if self.obra else None,
+            'funcionario_atendente': self.funcionario_atendente.to_dict() if self.funcionario_atendente else None
+        }
+
 class Movimentacao(db.Model):
     __tablename__ = 'movimentacoes'
 
