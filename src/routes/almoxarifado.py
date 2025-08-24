@@ -1334,12 +1334,35 @@ def listar_requisicoes_almoxarifado():
         from src.models.almoxarifado import Requisicao
         from src.models.user import User
 
-        status = request.args.get('status', 'PENDENTE')
+        status = request.args.get('status')
+        produto = request.args.get('produto')
+        obra = request.args.get('obra')
 
         query = Requisicao.query
 
         if status:
             query = query.filter_by(status=status)
+        elif not status and not produto and not obra:
+            # Se nenhum filtro específico, mostrar apenas pendentes por padrão
+            query = query.filter_by(status='PENDENTE')
+
+        # Filtro por produto
+        if produto:
+            query = query.join(Produto).filter(
+                db.or_(
+                    Produto.nome.ilike(f'%{produto}%'),
+                    Produto.codigo.ilike(f'%{produto}%')
+                )
+            )
+
+        # Filtro por obra
+        if obra:
+            query = query.join(Obra).filter(
+                db.or_(
+                    Obra.nome_obra.ilike(f'%{obra}%'),
+                    Obra.numero_obra.ilike(f'%{obra}%')
+                )
+            )
 
         requisicoes = query.order_by(desc(Requisicao.data_requisicao)).all()
 

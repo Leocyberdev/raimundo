@@ -31,9 +31,9 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+        <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
             <div class="stats-number" id="requisicoes-parciais">0</div>
-            <div class="stats-label">Atendimentos Parciais</div>
+            <div class="stats-label">Canceladas</div>
         </div>
     </div>
     <div class="col-md-3 mb-3">
@@ -51,7 +51,6 @@
             <option value="">Todos os Status</option>
             <option value="PENDENTE" selected>Pendentes</option>
             <option value="ATENDIDA">Atendidas</option>
-            <option value="PARCIAL">Parciais</option>
             <option value="CANCELADA">Canceladas</option>
         </select>
     </div>
@@ -61,7 +60,7 @@
     <div class="col-md-4">
         <input type="text" class="form-control" id="filtro-obra" placeholder="Filtrar por obra...">
     </div>
-</div>
+</div></div>
 
 <!-- Lista de Requisições -->
 <div class="card">
@@ -161,8 +160,8 @@ async function carregarEstatisticas() {
 async function carregarRequisicoes() {
     try {
         const status = document.getElementById('filtro-status').value;
-        const produto = document.getElementById('filtro-produto').value;
-        const obra = document.getElementById('filtro-obra').value;
+        const produto = document.getElementById('filtro-produto').value.trim();
+        const obra = document.getElementById('filtro-obra').value.trim();
         
         let url = '/api/almoxarifado/requisicoes';
         const params = new URLSearchParams();
@@ -254,13 +253,13 @@ function atualizarEstatisticas(requisicoes) {
     const stats = {
         pendentes: requisicoes.filter(r => r.status === 'PENDENTE').length,
         atendidas_hoje: requisicoes.filter(r => r.status === 'ATENDIDA' && r.data_atendimento && r.data_atendimento.startsWith(hoje)).length,
-        parciais: requisicoes.filter(r => r.status === 'PARCIAL').length,
+        canceladas: requisicoes.filter(r => r.status === 'CANCELADA').length,
         total: requisicoes.length
     };
     
     document.getElementById('requisicoes-pendentes').textContent = stats.pendentes;
     document.getElementById('requisicoes-atendidas').textContent = stats.atendidas_hoje;
-    document.getElementById('requisicoes-parciais').textContent = stats.parciais;
+    document.getElementById('requisicoes-parciais').textContent = stats.canceladas;
     document.getElementById('total-requisicoes').textContent = stats.total;
 }
 
