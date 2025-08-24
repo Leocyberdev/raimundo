@@ -90,6 +90,43 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Alterar Senha -->
+<div class="modal fade" id="modalAlterarSenha" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Alterar Senha do Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formAlterarSenha">
+                <div class="modal-body">
+                    <input type="hidden" id="usuarioIdSenha">
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Alterando senha para: <strong id="nomeUsuarioSenha"></strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="novaSenha" class="form-label">Nova Senha</label>
+                        <input type="password" class="form-control" id="novaSenha" required minlength="6">
+                        <div class="form-text">A senha deve ter pelo menos 6 caracteres.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="confirmarSenha" class="form-label">Confirmar Nova Senha</label>
+                        <input type="password" class="form-control" id="confirmarSenha" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">Alterar Senha</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -100,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
     carregarUsuarios();
     
     document.getElementById('formUsuario').addEventListener('submit', salvarUsuario);
+    document.getElementById('formAlterarSenha').addEventListener('submit', salvarNovaSenha);
 });
 
 async function carregarUsuarios() {
@@ -129,14 +167,19 @@ async function carregarUsuarios() {
                     </td>
                     <td>${formatDate(usuario.data_cadastro)}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="editarUsuario(${usuario.id})">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        ${!usuario.is_admin ? `
-                        <button class="btn btn-sm btn-outline-danger" onclick="desativarUsuario(${usuario.id})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                        ` : ''}
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editarUsuario(${usuario.id})" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="alterarSenhaUsuario(${usuario.id}, '${usuario.username}')" title="Alterar Senha">
+                                <i class="bi bi-key"></i>
+                            </button>
+                            ${!usuario.is_admin ? `
+                            <button class="btn btn-sm btn-outline-danger" onclick="excluirUsuario(${usuario.id})" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            ` : ''}
+                        </div>
                     </td>
                 </tr>
             `).join('');
@@ -231,6 +274,80 @@ async function desativarUsuario(id) {
             console.error('Erro ao desativar usuário:', error);
             showAlert('Erro ao desativar usuário', 'danger');
         }
+    }
+}
+
+async function excluirUsuario(id) {
+    if (confirm('Tem certeza que deseja EXCLUIR permanentemente este usuário? Esta ação não pode ser desfeita!')) {
+        try {
+            const response = await fetch(`/api/users/${id}/delete`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showAlert('Usuário excluído com sucesso!', 'success');
+                carregarUsuarios();
+            } else {
+                const result = await response.json();
+                showAlert(result.error || 'Erro ao excluir usuário', 'danger');
+            }
+            
+        } catch (error) {
+            console.error('Erro ao excluir usuário:', error);
+            showAlert('Erro ao excluir usuário', 'danger');
+        }
+    }
+}
+
+function alterarSenhaUsuario(id, username) {
+    document.getElementById('usuarioIdSenha').value = id;
+    document.getElementById('nomeUsuarioSenha').textContent = username;
+    document.getElementById('novaSenha').value = '';
+    document.getElementById('confirmarSenha').value = '';
+    
+    new bootstrap.Modal(document.getElementById('modalAlterarSenha')).show();
+}
+
+async function salvarNovaSenha(e) {
+    e.preventDefault();
+    
+    const novaSenha = document.getElementById('novaSenha').value;
+    const confirmarSenha = document.getElementById('confirmarSenha').value;
+    const usuarioId = document.getElementById('usuarioIdSenha').value;
+    
+    if (novaSenha !== confirmarSenha) {
+        showAlert('As senhas não coincidem!', 'danger');
+        return;
+    }
+    
+    if (novaSenha.length < 6) {
+        showAlert('A senha deve ter pelo menos 6 caracteres!', 'danger');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/${usuarioId}/alterar-senha`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nova_senha: novaSenha
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showAlert('Senha alterada com sucesso!', 'success');
+            document.getElementById('modalAlterarSenha').querySelector('.btn-close').click();
+        } else {
+            showAlert(result.error || 'Erro ao alterar senha', 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao alterar senha:', error);
+        showAlert('Erro ao alterar senha', 'danger');
     }
 }
 

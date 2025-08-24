@@ -212,6 +212,10 @@
                             <i class="bi bi-person-circle"></i> <span id="username-display">Usuário</span>
                         </a>
                         <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
+                                <i class="bi bi-key"></i> Alterar Senha
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/logout">
                                 <i class="bi bi-box-arrow-right"></i> Sair
                             </a></li>
@@ -232,7 +236,7 @@
                     </h1>
                     <div class="alert alert-info text-center">
                         <i class="bi bi-info-circle"></i>
-                        <strong>Bem-vindo ao sistema da Produção!</strong> Aqui você pode consultar estoque e fazer requisições de materiais.
+                        <strong>Bem-vindo <span id="nome-usuario-welcome">ao sistema da Produção</span>!</strong> Aqui você pode consultar estoque e fazer requisições de materiais.
                     </div>
                 </div>
             </div>
@@ -445,6 +449,41 @@
         </div>
     </div>
 
+    <!-- Modal Alterar Senha -->
+    <div class="modal fade" id="modalAlterarSenha" tabindex="-1" aria-labelledby="modalAlterarSenhaLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAlterarSenhaLabel">
+                        <i class="bi bi-key"></i> Alterar Senha
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formAlterarSenha">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="senhaAtual" class="form-label">Senha Atual *</label>
+                            <input type="password" class="form-control" id="senhaAtual" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="novaSenha" class="form-label">Nova Senha *</label>
+                            <input type="password" class="form-control" id="novaSenha" required minlength="6">
+                            <div class="form-text">A senha deve ter pelo menos 6 caracteres</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmarSenha" class="form-label">Confirmar Nova Senha *</label>
+                            <input type="password" class="form-control" id="confirmarSenha" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Alterar Senha</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -457,6 +496,7 @@
             configurarEventos();
             carregarEstoque();
             carregarNomeUsuario();
+            configurarAlterarSenha();
         });
 
         function configurarEventos() {
@@ -512,7 +552,9 @@
             try {
                 const response = await fetch('/api/user/current');
                 const user = await response.json();
-                document.getElementById('username-display').textContent = user.username || 'Usuário';
+                const username = user.username || 'Usuário';
+                document.getElementById('username-display').textContent = username;
+                document.getElementById('nome-usuario-welcome').textContent = username;
             } catch (error) {
                 console.error('Erro ao carregar nome do usuário:', error);
             }
@@ -927,6 +969,61 @@
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
+            });
+        }
+
+        function configurarAlterarSenha() {
+            const form = document.getElementById('formAlterarSenha');
+            const modal = document.getElementById('modalAlterarSenha');
+            
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                const senhaAtual = document.getElementById('senhaAtual').value;
+                const novaSenha = document.getElementById('novaSenha').value;
+                const confirmarSenha = document.getElementById('confirmarSenha').value;
+                
+                // Validar se as senhas coincidem
+                if (novaSenha !== confirmarSenha) {
+                    showAlert('As senhas não coincidem', 'warning');
+                    return;
+                }
+                
+                // Validar tamanho mínimo
+                if (novaSenha.length < 6) {
+                    showAlert('A senha deve ter pelo menos 6 caracteres', 'warning');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/user/alterar-senha', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            senha_atual: senhaAtual,
+                            nova_senha: novaSenha
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        showAlert('Senha alterada com sucesso!', 'success');
+                        form.reset();
+                        bootstrap.Modal.getInstance(modal).hide();
+                    } else {
+                        showAlert(result.error || 'Erro ao alterar senha', 'danger');
+                    }
+                    
+                } catch (error) {
+                    console.error('Erro ao alterar senha:', error);
+                    showAlert('Erro de conexão: ' + error.message, 'danger');
+                }
+            });
+            
+            // Limpar formulário quando modal for fechado
+            modal.addEventListener('hidden.bs.modal', function() {
+                form.reset();
             });
         }
 

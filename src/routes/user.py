@@ -170,6 +170,53 @@ def delete_user(user_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@user_bp.route('/api/users/<int:user_id>/delete', methods=['DELETE'])
+@admin_required
+def permanent_delete_user(user_id):
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Verificar se não é admin
+        if user.is_admin:
+            return jsonify({'error': 'Não é possível excluir usuário administrador'}), 403
+        
+        # Verificar se não é o próprio usuário logado
+        if user.id == session['user_id']:
+            return jsonify({'error': 'Não é possível excluir o próprio usuário'}), 403
+        
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'message': 'Usuário excluído permanentemente'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/api/users/<int:user_id>/alterar-senha', methods=['POST'])
+@admin_required
+def admin_alterar_senha(user_id):
+    """Alterar senha de qualquer usuário (apenas admin)"""
+    try:
+        data = request.get_json()
+        nova_senha = data.get('nova_senha')
+        
+        if not nova_senha:
+            return jsonify({'error': 'Nova senha é obrigatória'}), 400
+        
+        if len(nova_senha) < 6:
+            return jsonify({'error': 'A senha deve ter pelo menos 6 caracteres'}), 400
+        
+        user = User.query.get_or_404(user_id)
+        
+        # Atualizar senha
+        user.set_password(nova_senha)
+        db.session.commit()
+        
+        return jsonify({'message': 'Senha alterada com sucesso'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @user_bp.route('/api/user/current')
 @login_required
 def get_current_user():
@@ -181,4 +228,34 @@ def get_current_user():
         else:
             return jsonify({'error': 'Usuário não encontrado'}), 404
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/api/user/alterar-senha', methods=['POST'])
+@login_required
+def alterar_senha():
+    """Alterar senha do usuário atual"""
+    try:
+        data = request.get_json()
+        senha_atual = data.get('senha_atual')
+        nova_senha = data.get('nova_senha')
+        
+        if not senha_atual or not nova_senha:
+            return jsonify({'error': 'Senha atual e nova senha são obrigatórias'}), 400
+        
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'error': 'Usuário não encontrado'}), 404
+        
+        # Verificar senha atual
+        if not user.check_password(senha_atual):
+            return jsonify({'error': 'Senha atual incorreta'}), 401
+        
+        # Atualizar senha
+        user.set_password(nova_senha)
+        db.session.commit()
+        
+        return jsonify({'message': 'Senha alterada com sucesso'})
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
