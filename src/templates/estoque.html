@@ -439,7 +439,7 @@ async function carregarProdutos() {
         if (response.ok) {
             produtosCarregados = produtos;
             atualizarTabela(produtos);
-            atualizarResumo(produtos);
+            await atualizarResumo(produtos);
         } else {
             showAlert('Erro ao carregar produtos: ' + produtos.error, 'danger');
         }
@@ -448,10 +448,10 @@ async function carregarProdutos() {
     }
 }
 
-function aplicarFiltros() {
+async function aplicarFiltros() {
     // Agora aplicarFiltros apenas chama carregarProdutos que faz a filtragem no servidor
     paginaAtual = 1; // Reset da paginação
-    carregarProdutos();
+    await carregarProdutos();
 }
 
 function atualizarTabela(produtos) {
@@ -520,11 +520,24 @@ function atualizarTabela(produtos) {
     criarPaginacao(produtos.length);
 }
 
-function atualizarResumo(produtos) {
+async function atualizarResumo(produtos) {
     const total = produtos.length;
     const comEstoque = produtos.filter(p => p.quantidade_estoque > 0 && p.ativo).length;
-    const inativos = produtosCarregados.filter(p => !p.ativo).length; // Contar inativos do total carregado
     const zerado = produtos.filter(p => p.quantidade_estoque === 0 && p.ativo).length;
+    
+    // Buscar o total real de produtos inativos, independente dos filtros
+    let inativos = 0;
+    try {
+        const response = await fetch('/api/produtos?status=inativo');
+        if (response.ok) {
+            const produtosInativos = await response.json();
+            inativos = produtosInativos.length;
+        }
+    } catch (error) {
+        console.error('Erro ao buscar produtos inativos:', error);
+        // Fallback: contar inativos dos produtos carregados
+        inativos = produtosCarregados.filter(p => !p.ativo).length;
+    }
 
     document.getElementById("total-produtos").textContent = total;
     document.getElementById("produtos-estoque").textContent = comEstoque;
@@ -567,9 +580,9 @@ function criarPaginacao(totalItens) {
     paginacao.appendChild(proximo);
 }
 
-function mudarPagina(pagina) {
+async function mudarPagina(pagina) {
     paginaAtual = pagina;
-    aplicarFiltros();
+    await aplicarFiltros();
 }
 
 function configurarBuscaInteligente() {
@@ -676,7 +689,7 @@ function irParaAlocacao() {
     }
 }
 
-function limparFiltros() {
+async function limparFiltros() {
     document.getElementById("filtro-categoria").value = "";
     document.getElementById("filtroFornecedor").value = "";
     document.getElementById("busca-produto").value = "";
@@ -684,7 +697,7 @@ function limparFiltros() {
     document.getElementById("search-results").style.display = "none";
     document.getElementById("fornecedoresResults").style.display = "none";
     paginaAtual = 1;
-    aplicarFiltros();
+    await aplicarFiltros();
 }
 
 function exportarEstoque() {
@@ -768,24 +781,24 @@ function configurarBuscaFornecedor() {
     });
 }
 
-function selecionarFornecedor(nome) {
+async function selecionarFornecedor(nome) {
     document.getElementById('filtroFornecedor').value = nome;
     document.getElementById('fornecedoresResults').style.display = 'none';
-    carregarProdutos(); // Chama carregarProdutos diretamente
+    await carregarProdutos(); // Chama carregarProdutos diretamente
 }
 
 
 // Aplicar filtros quando Enter for pressionado
-document.getElementById('filtroFornecedor').addEventListener('keypress', function(e) {
+document.getElementById('filtroFornecedor').addEventListener('keypress', async function(e) {
     if (e.key === 'Enter') {
-        carregarProdutos();
+        await carregarProdutos();
     }
 });
 
-document.getElementById('busca-produto').addEventListener('keypress', function(e) {
+document.getElementById('busca-produto').addEventListener('keypress', async function(e) {
     if (e.key === 'Enter') {
         document.getElementById('search-results').style.display = 'none';
-        carregarProdutos();
+        await carregarProdutos();
     }
 });
 

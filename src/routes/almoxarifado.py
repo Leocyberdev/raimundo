@@ -292,7 +292,7 @@ def gerenciar_saldo(produto_id):
                     )
                     db.session.add(funcionario)
                     db.session.flush()  # Para obter o ID sem fazer commit
-                
+
                 funcionario_id = funcionario.id
 
         movimentacao = Movimentacao(
@@ -1389,7 +1389,7 @@ def atender_requisicao(requisicao_id):
                     )
                     db.session.add(funcionario)
                     db.session.flush()  # Para obter o ID sem fazer commit
-                
+
                 funcionario_id = funcionario.id
 
         # Atualizar estoque
