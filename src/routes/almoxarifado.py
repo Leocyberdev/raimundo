@@ -283,12 +283,17 @@ def gerenciar_saldo(produto_id):
             if user:
                 # Buscar funcionário com o mesmo nome do usuário
                 funcionario = Funcionario.query.filter_by(nome=user.username, ativo=True).first()
-                if funcionario:
-                    funcionario_id = funcionario.id
-                else:
-                    # Se não encontrar, usar o primeiro funcionário ativo
-                    funcionario_ativo = Funcionario.query.filter_by(ativo=True).first()
-                    funcionario_id = funcionario_ativo.id if funcionario_ativo else 1
+                if not funcionario:
+                    # Se não encontrar, criar funcionário automaticamente
+                    funcionario = Funcionario(
+                        nome=user.username,
+                        cargo='Almoxarifado',
+                        ativo=True
+                    )
+                    db.session.add(funcionario)
+                    db.session.flush()  # Para obter o ID sem fazer commit
+                
+                funcionario_id = funcionario.id
 
         movimentacao = Movimentacao(
             produto_id=produto.id,
@@ -419,7 +424,7 @@ def alocar_produto():
                         # Criar funcionário automaticamente se não existir
                         funcionario_encontrado = Funcionario(
                             nome=user.username,
-                            cargo='Operador do Sistema',
+                            cargo='Almoxarifado',
                             ativo=True
                         )
                         db.session.add(funcionario_encontrado)
@@ -1373,9 +1378,19 @@ def atender_requisicao(requisicao_id):
             from src.models.user import User
             user = User.query.get(user_id)
             if user:
+                # Buscar funcionário com o mesmo nome do usuário
                 funcionario = Funcionario.query.filter_by(nome=user.username, ativo=True).first()
-                if funcionario:
-                    funcionario_id = funcionario.id
+                if not funcionario:
+                    # Se não existe, criar funcionário automaticamente
+                    funcionario = Funcionario(
+                        nome=user.username,
+                        cargo='Almoxarifado',
+                        ativo=True
+                    )
+                    db.session.add(funcionario)
+                    db.session.flush()  # Para obter o ID sem fazer commit
+                
+                funcionario_id = funcionario.id
 
         # Atualizar estoque
         requisicao.produto.quantidade_estoque -= quantidade_atendida
