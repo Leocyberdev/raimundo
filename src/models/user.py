@@ -2,6 +2,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import pytz
 
 db = SQLAlchemy()
 
@@ -14,7 +15,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     tipo_usuario = db.Column(db.String(20), nullable=False, default='almoxarifado')  # 'almoxarifado' ou 'producao'
     ativo = db.Column(db.Boolean, default=True)
-    data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
+    data_cadastro = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Sao_Paulo')))
 
     def __repr__(self):
         return f'<User {self.username}>'

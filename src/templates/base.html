@@ -309,7 +309,7 @@
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> Admin
+                            <i class="bi bi-person-circle"></i> <span id="current-username">Usuário</span>
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/gerenciamento-usuarios">
@@ -348,7 +348,23 @@
                     link.classList.add('active');
                 }
             });
+
+            // Carregar usuário atual
+            loadCurrentUser();
         });
+
+        // Função para carregar o usuário atual
+        async function loadCurrentUser() {
+            try {
+                const response = await fetch('/api/user/current');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('current-username').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar usuário atual:', error);
+            }
+        }
 
         // Função para mostrar alertas
         function showAlert(message, type = 'info') {
@@ -386,7 +402,8 @@
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'America/Sao_Paulo'
             });
         }
     </script>
