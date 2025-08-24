@@ -14,16 +14,16 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Decorator para verificar se é admin
-def admin_required(f):
+# Decorator para verificar se é do almoxarifado
+def almoxarifado_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('user.login'))
         
         user = User.query.get(session['user_id'])
-        if not user or not user.is_admin:
-            return jsonify({'error': 'Acesso negado'}), 403
+        if not user or user.tipo_usuario != 'almoxarifado':
+            return jsonify({'error': 'Acesso negado - Apenas usuários do almoxarifado'}), 403
         return f(*args, **kwargs)
     return decorated_function
 
@@ -86,20 +86,20 @@ def producao_dashboard():
     return render_template('producao_dashboard.html')
 
 @user_bp.route('/gerenciamento-usuarios')
-@admin_required
+@almoxarifado_required
 def gerenciamento_usuarios():
-    """Página de gerenciamento de usuários"""
+    """Página de gerenciamento de usuários - apenas almoxarifado"""
     return render_template('gerenciamento_usuarios.html')
 
 # APIs para usuários
 @user_bp.route('/api/users', methods=['GET'])
-@admin_required
+@almoxarifado_required
 def get_users():
     users = User.query.all()
     return jsonify([user.to_dict() for user in users])
 
 @user_bp.route('/api/users', methods=['POST'])
-@admin_required
+@almoxarifado_required
 def create_user():
     try:
         data = request.json
@@ -131,13 +131,13 @@ def create_user():
         return jsonify({'error': str(e)}), 500
 
 @user_bp.route('/api/users/<int:user_id>', methods=['GET'])
-@admin_required
+@almoxarifado_required
 def get_user(user_id):
     user = User.query.get_or_404(user_id)
     return jsonify(user.to_dict())
 
 @user_bp.route('/api/users/<int:user_id>', methods=['PUT'])
-@admin_required
+@almoxarifado_required
 def update_user(user_id):
     try:
         user = User.query.get_or_404(user_id)
@@ -159,7 +159,7 @@ def update_user(user_id):
         return jsonify({'error': str(e)}), 500
 
 @user_bp.route('/api/users/<int:user_id>', methods=['DELETE'])
-@admin_required
+@almoxarifado_required
 def delete_user(user_id):
     try:
         user = User.query.get_or_404(user_id)
@@ -171,14 +171,10 @@ def delete_user(user_id):
         return jsonify({'error': str(e)}), 500
 
 @user_bp.route('/api/users/<int:user_id>/delete', methods=['DELETE'])
-@admin_required
+@almoxarifado_required
 def permanent_delete_user(user_id):
     try:
         user = User.query.get_or_404(user_id)
-        
-        # Verificar se não é admin
-        if user.is_admin:
-            return jsonify({'error': 'Não é possível excluir usuário administrador'}), 403
         
         # Verificar se não é o próprio usuário logado
         if user.id == session['user_id']:
@@ -192,9 +188,9 @@ def permanent_delete_user(user_id):
         return jsonify({'error': str(e)}), 500
 
 @user_bp.route('/api/users/<int:user_id>/alterar-senha', methods=['POST'])
-@admin_required
+@almoxarifado_required
 def admin_alterar_senha(user_id):
-    """Alterar senha de qualquer usuário (apenas admin)"""
+    """Alterar senha de qualquer usuário (apenas almoxarifado)"""
     try:
         data = request.get_json()
         nova_senha = data.get('nova_senha')

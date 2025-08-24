@@ -15,7 +15,6 @@ class User(db.Model):
     tipo_usuario = db.Column(db.String(20), nullable=False, default='almoxarifado')  # 'almoxarifado' ou 'producao'
     ativo = db.Column(db.Boolean, default=True)
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
-    is_admin = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -33,6 +32,5 @@ class User(db.Model):
             'email': self.email,
             'tipo_usuario': self.tipo_usuario,
             'ativo': self.ativo,
-            'data_cadastro': self.data_cadastro.isoformat() if self.data_cadastro else None,
-            'is_admin': self.is_admin
+            'data_cadastro': self.data_cadastro.isoformat() if self.data_cadastro else None
         }
