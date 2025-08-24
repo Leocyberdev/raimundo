@@ -132,8 +132,6 @@
 
 {% block extra_js %}
 <script>
-let editandoUsuario = false;
-
 document.addEventListener('DOMContentLoaded', function() {
     carregarUsuarios();
     
@@ -169,9 +167,6 @@ async function carregarUsuarios() {
                     <td>${formatDate(usuario.data_cadastro)}</td>
                     <td>
                         <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-outline-primary" onclick="editarUsuario(${usuario.id})" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </button>
                             <button class="btn btn-sm btn-outline-warning" onclick="alterarSenhaUsuario(${usuario.id}, '${usuario.username}')" title="Alterar Senha">
                                 <i class="bi bi-key"></i>
                             </button>
@@ -195,7 +190,6 @@ async function salvarUsuario(e) {
     e.preventDefault();
     
     try {
-        const usuarioId = document.getElementById('usuarioId').value;
         const data = {
             username: document.getElementById('username').value,
             email: document.getElementById('email').value,
@@ -204,11 +198,8 @@ async function salvarUsuario(e) {
             ativo: document.getElementById('ativo').checked
         };
         
-        const url = editandoUsuario ? `/api/users/${usuarioId}` : '/api/users';
-        const method = editandoUsuario ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-            method: method,
+        const response = await fetch('/api/users', {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -218,43 +209,21 @@ async function salvarUsuario(e) {
         const result = await response.json();
         
         if (response.ok) {
-            showAlert(editandoUsuario ? 'Usuário atualizado com sucesso!' : 'Usuário criado com sucesso!', 'success');
+            showAlert('Usuário criado com sucesso!', 'success');
             document.getElementById('modalUsuario').querySelector('.btn-close').click();
             carregarUsuarios();
             limparFormulario();
         } else {
-            showAlert(result.error || 'Erro ao salvar usuário', 'danger');
+            showAlert(result.error || 'Erro ao criar usuário', 'danger');
         }
         
     } catch (error) {
-        console.error('Erro ao salvar usuário:', error);
-        showAlert('Erro ao salvar usuário', 'danger');
+        console.error('Erro ao criar usuário:', error);
+        showAlert('Erro ao criar usuário', 'danger');
     }
 }
 
-async function editarUsuario(id) {
-    try {
-        const response = await fetch(`/api/users/${id}`);
-        const usuario = await response.json();
-        
-        document.getElementById('usuarioId').value = usuario.id;
-        document.getElementById('username').value = usuario.username;
-        document.getElementById('email').value = usuario.email;
-        document.getElementById('password').value = '';
-        document.getElementById('password').required = false;
-        document.getElementById('tipoUsuario').value = usuario.tipo_usuario;
-        document.getElementById('ativo').checked = usuario.ativo;
-        
-        document.querySelector('#modalUsuario .modal-title').textContent = 'Editar Usuário';
-        editandoUsuario = true;
-        
-        new bootstrap.Modal(document.getElementById('modalUsuario')).show();
-        
-    } catch (error) {
-        console.error('Erro ao carregar usuário:', error);
-        showAlert('Erro ao carregar dados do usuário', 'danger');
-    }
-}
+
 
 async function desativarUsuario(id) {
     if (confirm('Tem certeza que deseja desativar este usuário?')) {
@@ -357,7 +326,6 @@ function limparFormulario() {
     document.getElementById('usuarioId').value = '';
     document.getElementById('password').required = true;
     document.querySelector('#modalUsuario .modal-title').textContent = 'Novo Usuário';
-    editandoUsuario = false;
 }
 
 // Limpar formulário quando modal for fechado
