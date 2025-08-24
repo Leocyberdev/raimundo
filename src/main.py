@@ -9,54 +9,69 @@ from src.models.user import db, User
 from src.models.almoxarifado import Produto, Obra, Funcionario, Movimentacao, Categoria, Fornecedor
 from src.routes.user import user_bp, login_required
 from src.routes.almoxarifado import almoxarifado_bp
+from src.config import config
 
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+def create_app(config_name=None):
+    """Factory function para criar a aplicação Flask"""
+    if config_name is None:
+        config_name = os.environ.get('FLASK_ENV', 'development')
+    
+    app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+    
+    # Carrega configuração baseada no ambiente
+    app.config.from_object(config[config_name])
+    config[config_name].init_app(app)
+    
+    # Configuração CORS para permitir acesso externo
+    CORS(app)
+    
+    # Registra blueprints
+    app.register_blueprint(user_bp)
+    app.register_blueprint(almoxarifado_bp)
+    
+    # Inicializa banco de dados
+    db.init_app(app)
+    
+    return app
 
-# Configuração CORS para permitir acesso externo
-CORS(app)
+# Cria a aplicação
+app = create_app()
 
-app.register_blueprint(user_bp)
-app.register_blueprint(almoxarifado_bp)
+# Inicialização do banco apenas se executado diretamente
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
 
-# uncomment if you need to use database
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
-with app.app_context():
-    db.create_all()
+        # Criar usuário admin master se não existir
+        admin_user = User.query.filter_by(username='Monter').first()
+        if not admin_user:
+            admin_user = User(
+                username='Monter',
+                email='admin@sistema.com',
+                tipo_usuario='almoxarifado',
+                is_admin=True,
+                ativo=True
+            )
+            admin_user.set_password('almox')
+            db.session.add(admin_user)
+            db.session.commit()
+            print("Usuário admin master criado: Monter / almox")
 
-    # Criar usuário admin master se não existir
-    admin_user = User.query.filter_by(username='Monter').first()
-    if not admin_user:
-        admin_user = User(
-            username='Monter',
-            email='admin@sistema.com',
-            tipo_usuario='almoxarifado',
-            is_admin=True,
-            ativo=True
-        )
-        admin_user.set_password('almox')
-        db.session.add(admin_user)
-        db.session.commit()
-        print("Usuário admin master criado: Monter / almox")
+        # Criar funcionário padrão se não existir
+        from src.models.almoxarifado import Funcionario
+        funcionario_padrao = Funcionario.query.filter_by(id=1).first()
+        if not funcionario_padrao:
+            funcionario_padrao = Funcionario(
+                id=1,
+                nome='Sistema',
+                cargo='Operador do Sistema',
+                ativo=True
+            )
+            db.session.add(funcionario_padrao)
+            db.session.commit()
+            print("Funcionário padrão criado: Sistema")
 
-    # Criar funcionário padrão se não existir
-    from src.models.almoxarifado import Funcionario
-    funcionario_padrao = Funcionario.query.filter_by(id=1).first()
-    if not funcionario_padrao:
-        funcionario_padrao = Funcionario(
-            id=1,
-            nome='Sistema',
-            cargo='Operador do Sistema',
-            ativo=True
-        )
-        db.session.add(funcionario_padrao)
-        db.session.commit()
-        print("Funcionário padrão criado: Sistema")
-
-    print("Banco de dados inicializado!")
-
+        print("Banco de dados inicializado!")
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

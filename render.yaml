@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: almoxarifado
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash run_prod.sh
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+
