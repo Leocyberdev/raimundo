@@ -17,7 +17,7 @@ fi
 
 # Inicializa o banco de dados se necessário
 echo "Inicializando banco de dados..."
-cd src && python init_db.py
+cd src && python init_db.py > ../init_db.log 2>&1
 cd ..
 
 # Executa a aplicação com Gunicorn
@@ -28,6 +28,8 @@ echo "- Porta: ${PORT:-5000}"
 echo "=" * 50
 
 gunicorn -c gunicorn.conf.py src.main:app
+
+
 
 
 
