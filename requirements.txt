@@ -13,7 +13,7 @@ Werkzeug==3.1.3
 pytz==2024.1
 
 # PostgreSQL driver para produção
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.10
 
 # Gunicorn para servidor de produção
 gunicorn==21.2.0
