@@ -1,6 +1,6 @@
 import os
 import sys
-# DON'T CHANGE THIS !!!
+# DON\'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory, render_template, session, redirect, url_for
@@ -14,9 +14,9 @@ from src.config import config
 def create_app(config_name=None):
     """Factory function para criar a aplicação Flask"""
     if config_name is None:
-        config_name = os.environ.get('FLASK_ENV', 'development')
+        config_name = os.environ.get("FLASK_ENV", "development")
     
-    app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+    app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
     
     # Carrega configuração baseada no ambiente
     app.config.from_object(config[config_name])
@@ -38,21 +38,21 @@ def create_app(config_name=None):
 app = create_app()
 
 # Inicialização do banco apenas se executado diretamente
-if __name__ == '__main__':
+if __name__ == "__main__":
     with app.app_context():
         db.create_all()
 
         # Criar usuário admin master se não existir
-        admin_user = User.query.filter_by(username='Monter').first()
+        admin_user = User.query.filter_by(username="Monter").first()
         if not admin_user:
             admin_user = User(
-                username='Monter',
-                email='admin@sistema.com',
-                tipo_usuario='almoxarifado',
+                username="Monter",
+                email="admin@sistema.com",
+                tipo_usuario="almoxarifado",
                 is_admin=True,
                 ativo=True
             )
-            admin_user.set_password('almox')
+            admin_user.set_password("almox")
             db.session.add(admin_user)
             db.session.commit()
             print("Usuário admin master criado: Monter / almox")
@@ -63,8 +63,8 @@ if __name__ == '__main__':
         if not funcionario_padrao:
             funcionario_padrao = Funcionario(
                 id=1,
-                nome='Sistema',
-                cargo='Operador do Sistema',
+                nome="Sistema",
+                cargo="Operador do Sistema",
                 ativo=True
             )
             db.session.add(funcionario_padrao)
@@ -73,14 +73,14 @@ if __name__ == '__main__':
 
         print("Banco de dados inicializado!")
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+@app.route("/")
+@app.route("/<path:path>")
 @login_required
 def serve(path):
     # Verificar tipo de usuário
-    user = User.query.get(session['user_id'])
-    if user.tipo_usuario == 'producao':
-        return redirect('/producao')
+    user = User.query.get(session["user_id"])
+    if user.tipo_usuario == "producao":
+        return redirect("/producao")
 
     static_folder_path = app.static_folder
     if static_folder_path is None:
@@ -89,21 +89,23 @@ def serve(path):
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
     else:
-        index_path = os.path.join(static_folder_path, 'index.html')
+        index_path = os.path.join(static_folder_path, "index.html")
         if os.path.exists(index_path):
-            return send_from_directory(static_folder_path, 'index.html')
+            return send_from_directory(static_folder_path, "index.html")
         else:
             return "index.html not found", 404
 
-@app.route('/gerenciamento')
+@app.route("/gerenciamento")
 @login_required
 def gerenciamento():
-    return render_template('gerenciamento_obras.html')
+    return render_template("gerenciamento_obras.html")
 
-@app.route('/locais')
+@app.route("/locais")
 @login_required
 def locais():
-    return render_template('gerenciamento_locais.html')
+    return render_template("gerenciamento_locais.html")
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
+
+
