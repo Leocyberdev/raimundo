@@ -26,8 +26,17 @@ def create_app(config_name=None):
     # Carrega configuração baseada no ambiente
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
+
+    # Ajustes para conexões de banco mais confiáveis (Postgres / Render)
+    app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {})
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"].update({
+        "pool_pre_ping": True,
+        "pool_size": 5,
+        "max_overflow": 10,
+        "pool_timeout": 30
+    })
     
-    # Configuração CORS para permitir acesso externo
+    # Configuração CORS
     CORS(app)
     
     # Registra blueprints
@@ -38,10 +47,10 @@ def create_app(config_name=None):
     db.init_app(app)
     Migrate(app, db)
 
-    # 🔹 Registra comandos customizados
+    # Registra comandos customizados
     register_commands(app)
 
-    # 🔹 Garante criação das tabelas no banco (SQLite ou Postgres)
+    # Garante criação das tabelas no banco
     with app.app_context():
         try:
             db.create_all()
@@ -56,12 +65,11 @@ def create_app(config_name=None):
 
 def register_commands(app):
     """Registra comandos customizados no flask CLI"""
-
     @app.cli.command("init-db")
     @with_appcontext
     def init_db():
         """Cria usuário admin master e funcionário padrão"""
-        # Criar usuário admin master se não existir
+        # Usuário admin
         admin_user = User.query.filter_by(username="Monter").first()
         if not admin_user:
             admin_user = User(
@@ -75,7 +83,7 @@ def register_commands(app):
             db.session.commit()
             click.echo("✅ Usuário admin master criado: Monter / almox")
 
-        # Criar funcionário padrão se não existir
+        # Funcionário padrão
         funcionario_padrao = Funcionario.query.filter_by(id=1).first()
         if not funcionario_padrao:
             funcionario_padrao = Funcionario(
@@ -93,18 +101,18 @@ def register_commands(app):
 app = create_app()
 
 
-# Inicialização do banco apenas se executado diretamente
+# Inicialização do servidor
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV", "development") != "production"
+    app.run(debug=debug, host="0.0.0.0", port=port)
 
 
+# Rotas
 @app.route("/")
 @app.route("/<path:path>")
 @login_required
 def serve(path):
-    # Verificar tipo de usuário
     user = User.query.get(session["user_id"])
     if user.tipo_usuario == "producao":
         return redirect("/producao")
@@ -113,14 +121,14 @@ def serve(path):
     if static_folder_path is None:
         return "Static folder not configured", 404
 
-    if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
+    if path and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
-    else:
-        index_path = os.path.join(static_folder_path, "index.html")
-        if os.path.exists(index_path):
-            return send_from_directory(static_folder_path, "index.html")
-        else:
-            return "index.html not found", 404
+    
+    index_path = os.path.join(static_folder_path, "index.html")
+    if os.path.exists(index_path):
+        return send_from_directory(static_folder_path, "index.html")
+    
+    return "index.html not found", 404
 
 
 @app.route("/gerenciamento")
