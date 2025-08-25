@@ -84,12 +84,6 @@ def estatisticas():
 def requisicoes():
     return render_template('requisicoes.html')
 
-@almoxarifado_bp.route('/requisicoes')
-@login_required
-def requisicoes():
-    """Página de gerenciamento de requisições da produção"""
-    return render_template('requisicoes.html')
-
 
 
 # ===== API ENDPOINTS =====
