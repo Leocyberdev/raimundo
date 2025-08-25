@@ -17,53 +17,72 @@ almoxarifado_bp = Blueprint('almoxarifado', __name__)
 # Senha para operações administrativas
 ADMIN_PASSWORD = "Monter"
 
+# ===== FUNÇÃO AUXILIAR PARA FUNCIONÁRIO =====
+def get_funcionario_id(user=None):
+    """Retorna o ID do funcionário correspondente ao usuário ou o 'Sistema' como fallback."""
+    funcionario_id = None
+
+    if user:
+        funcionario = Funcionario.query.filter_by(nome=user.username, ativo=True).first()
+        if funcionario:
+            return funcionario.id
+
+    # Se não encontrou, usar/garantir o funcionário "Sistema"
+    funcionario_sistema = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
+    if not funcionario_sistema:
+        funcionario_sistema = Funcionario(
+            nome='Sistema',
+            cargo='Sistema',
+            ativo=True
+        )
+        db.session.add(funcionario_sistema)
+        db.session.flush()  # pega o id sem commit
+
+    return funcionario_sistema.id
+
 # ===== ROTAS PARA PÁGINAS =====
 
 @almoxarifado_bp.route('/')
 @login_required
 def dashboard():
-    """Dashboard principal"""
     return render_template('dashboard.html')
 
 @almoxarifado_bp.route('/fornecedores')
 def fornecedores():
-    """Página de gerenciamento de fornecedores"""
     return render_template('fornecedores.html')
 
 @almoxarifado_bp.route('/categorias')
 def categorias():
-    """Página de gerenciamento de categorias"""
     return render_template('categorias.html')
 
 @almoxarifado_bp.route('/produtos/cadastro')
 def cadastro_produtos():
-    """Página de cadastro de produtos"""
     return render_template('cadastro_produtos.html')
 
 @almoxarifado_bp.route('/estoque')
 def estoque():
-    """Página de estoque"""
     return render_template('estoque.html')
 
 @almoxarifado_bp.route('/produtos/alocar')
 def alocar_produtos():
-    """Página de alocação de produtos"""
     return render_template('alocar_produtos.html')
 
 @almoxarifado_bp.route("/gerenciamento")
 def gerenciamento_obras():
-    """Página de gerenciamento de obras"""
     return render_template("gerenciamento_obras.html")
 
 @almoxarifado_bp.route('/historico')
 def historico():
-    """Página de histórico"""
     return render_template('historico.html')
 
 @almoxarifado_bp.route('/estatisticas')
 def estatisticas():
-    """Página de estatísticas"""
     return render_template('estatisticas.html')
+
+@almoxarifado_bp.route('/requisicoes')
+@login_required
+def requisicoes():
+    return render_template('requisicoes.html')
 
 @almoxarifado_bp.route('/requisicoes')
 @login_required
