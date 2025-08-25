@@ -437,11 +437,11 @@ def alocar_produto():
         
         # Se ainda não temos funcionario_id, usar Sistema como fallback
         if not funcionario_id:
-            funcionario_sistema = Funcionario.query.filter_by(nome=\'Sistema\', ativo=True).first()
+            funcionario_sistema = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
             if not funcionario_sistema:
                 funcionario_sistema = Funcionario(
-                    nome=\'Sistema\',
-                    cargo=\'Sistema\',
+                    nome='Sistema',
+                    cargo='Sistema',
                     ativo=True
                 )
                 db.session.add(funcionario_sistema)
