@@ -45,7 +45,7 @@ def create_app(config_name=None):
                 username="Monter",
                 email="admin@sistema.com",
                 tipo_usuario="almoxarifado",
-                is_admin=True,
+            
                 ativo=True
             )
             admin_user.set_password("almox")
