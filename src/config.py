@@ -19,23 +19,30 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Configuração para produção - usa PostgreSQL"""
     DEBUG = False
-    
-    # Render fornece a URL do banco de dados via DATABASE_URL
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
-    
-    # Se DATABASE_URL não estiver definida, usa as variáveis de ambiente antigas
-    if not SQLALCHEMY_DATABASE_URI:
+
+    raw_url = os.environ.get("DATABASE_URL")
+
+    if raw_url:
+        # Normaliza o prefixo para usar psycopg2
+        if raw_url.startswith("postgres://"):
+            raw_url = raw_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif raw_url.startswith("postgresql://"):
+            raw_url = raw_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+        SQLALCHEMY_DATABASE_URI = raw_url
+    else:
         DB_HOST = os.environ.get("DB_HOST", "localhost")
         DB_PORT = os.environ.get("DB_PORT", "5432")
         DB_NAME = os.environ.get("DB_NAME", "almoxarifado")
         DB_USER = os.environ.get("DB_USER", "postgres")
         DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
-        
+
         if DB_PASSWORD:
             encoded_password = quote_plus(DB_PASSWORD)
-            SQLALCHEMY_DATABASE_URI = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+            SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         else:
-            SQLALCHEMY_DATABASE_URI = f"postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+            SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
 
 class TestingConfig(Config):
     """Configuração para testes"""
