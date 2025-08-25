@@ -33,18 +33,52 @@ def create_app(config_name=None):
     # Inicializa banco de dados
     db.init_app(app)
     
-    # Inicializa Flask-Migrate
     migrate = Migrate(app, db)
-    
+
+    # Executa criação de usuário e funcionário padrão
+    with app.app_context():
+        # Criar usuário admin master se não existir
+        admin_user = User.query.filter_by(username="Monter").first()
+        if not admin_user:
+            admin_user = User(
+                username="Monter",
+                email="admin@sistema.com",
+                tipo_usuario="almoxarifado",
+                is_admin=True,
+                ativo=True
+            )
+            admin_user.set_password("almox")
+            db.session.add(admin_user)
+            db.session.commit()
+            print("Usuário admin master criado: Monter / almox")
+
+        # Criar funcionário padrão se não existir
+        funcionario_padrao = Funcionario.query.filter_by(id=1).first()
+        if not funcionario_padrao:
+            funcionario_padrao = Funcionario(
+                id=1,
+                nome="Sistema",
+                cargo="Operador do Sistema",
+                ativo=True
+            )
+            db.session.add(funcionario_padrao)
+            db.session.commit()
+            print("Funcionário padrão criado: Sistema")
+
     return app
+
 
 # Cria a aplicação
 app = create_app()
+
+
 
 # Inicialização do banco apenas se executado diretamente
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+    app.run(debug=True, host="0.0.0.0", port=5000)
+
 
         # Criar usuário admin master se não existir
         admin_user = User.query.filter_by(username="Monter").first()
