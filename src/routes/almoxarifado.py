@@ -431,7 +431,7 @@ def alocar_produto():
                         ativo=True
                     )
                     db.session.add(funcionario_encontrado)
-                    db.session.commit()  # Commit para garantir que o ID seja persistido
+                    db.session.flush()  # Usar flush para obter o ID sem comitar a transação principal
 
                 funcionario_id = funcionario_encontrado.id
         
@@ -445,7 +445,7 @@ def alocar_produto():
                     ativo=True
                 )
                 db.session.add(funcionario_sistema)
-                db.session.commit() # Commit para garantir que o ID seja persistido
+                db.session.flush() # Usar flush para obter o ID sem comitar a transação principal
             funcionario_id = funcionario_sistema.id
 
         # Verificar estoque
