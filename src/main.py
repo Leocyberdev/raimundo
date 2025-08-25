@@ -1,6 +1,6 @@
 import os
 import sys
-# DON\'T CHANGE THIS !!!
+# DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory, render_template, session, redirect, url_for
@@ -33,6 +33,7 @@ def create_app(config_name=None):
     # Inicializa banco de dados
     db.init_app(app)
     
+    # Inicializa Flask-Migrate
     migrate = Migrate(app, db)
 
     # Executa criação de usuário e funcionário padrão
@@ -67,49 +68,14 @@ def create_app(config_name=None):
 
     return app
 
-
 # Cria a aplicação
 app = create_app()
-
-
 
 # Inicialização do banco apenas se executado diretamente
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True, host="0.0.0.0", port=5000)
-
-
-        # Criar usuário admin master se não existir
-        admin_user = User.query.filter_by(username="Monter").first()
-        if not admin_user:
-            admin_user = User(
-                username="Monter",
-                email="admin@sistema.com",
-                tipo_usuario="almoxarifado",
-                is_admin=True,
-                ativo=True
-            )
-            admin_user.set_password("almox")
-            db.session.add(admin_user)
-            db.session.commit()
-            print("Usuário admin master criado: Monter / almox")
-
-        # Criar funcionário padrão se não existir
-        from src.models.almoxarifado import Funcionario
-        funcionario_padrao = Funcionario.query.filter_by(id=1).first()
-        if not funcionario_padrao:
-            funcionario_padrao = Funcionario(
-                id=1,
-                nome="Sistema",
-                cargo="Operador do Sistema",
-                ativo=True
-            )
-            db.session.add(funcionario_padrao)
-            db.session.commit()
-            print("Funcionário padrão criado: Sistema")
-
-        print("Banco de dados inicializado!")
 
 @app.route("/")
 @app.route("/<path:path>")
@@ -122,7 +88,7 @@ def serve(path):
 
     static_folder_path = app.static_folder
     if static_folder_path is None:
-            return "Static folder not configured", 404
+        return "Static folder not configured", 404
 
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
@@ -142,8 +108,3 @@ def gerenciamento():
 @login_required
 def locais():
     return render_template("gerenciamento_locais.html")
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
-
-
