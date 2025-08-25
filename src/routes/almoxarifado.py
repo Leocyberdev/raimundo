@@ -431,21 +431,21 @@ def alocar_produto():
                         ativo=True
                     )
                     db.session.add(funcionario_encontrado)
-                    db.session.flush()  # Para obter o ID sem fazer commit
+                    db.session.commit()  # Commit para garantir que o ID seja persistido
 
                 funcionario_id = funcionario_encontrado.id
         
-        # Se ainda não temos funcionário_id, usar Sistema como fallback
+        # Se ainda não temos funcionario_id, usar Sistema como fallback
         if not funcionario_id:
-            funcionario_sistema = Funcionario.query.filter_by(nome='Sistema', ativo=True).first()
+            funcionario_sistema = Funcionario.query.filter_by(nome=\'Sistema\', ativo=True).first()
             if not funcionario_sistema:
                 funcionario_sistema = Funcionario(
-                    nome='Sistema',
-                    cargo='Sistema',
+                    nome=\'Sistema\',
+                    cargo=\'Sistema\',
                     ativo=True
                 )
                 db.session.add(funcionario_sistema)
-                db.session.flush()
+                db.session.commit() # Commit para garantir que o ID seja persistido
             funcionario_id = funcionario_sistema.id
 
         # Verificar estoque
