@@ -42,17 +42,17 @@ def create_app(config_name=None):
     register_commands(app)
 
     # 🔹 Garante criação das tabelas no banco (SQLite ou Postgres)
-   with app.app_context():
-    try:
-        db.create_all()
-        from sqlalchemy import inspect
-        insp = inspect(db.engine)
-        print("✅ Tabelas no banco:", insp.get_table_names())
-    except Exception as e:
-        print(f"❌ Erro ao criar tabelas: {e}")
-
+    with app.app_context():
+        try:
+            db.create_all()
+            from sqlalchemy import inspect
+            insp = inspect(db.engine)
+            print("✅ Tabelas no banco:", insp.get_table_names())
+        except Exception as e:
+            print(f"❌ Erro ao criar tabelas: {e}")
 
     return app
+
 
 
 def register_commands(app):
