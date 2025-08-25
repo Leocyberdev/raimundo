@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory, render_template, session, redirect, url_for
 from flask_cors import CORS
+from flask_migrate import Migrate
 from src.models.user import db, User
 from src.models.almoxarifado import Produto, Obra, Funcionario, Movimentacao, Categoria, Fornecedor
 from src.routes.user import user_bp, login_required
@@ -31,6 +32,9 @@ def create_app(config_name=None):
     
     # Inicializa banco de dados
     db.init_app(app)
+    
+    # Inicializa Flask-Migrate
+    migrate = Migrate(app, db)
     
     return app
 
