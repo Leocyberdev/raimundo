@@ -1,2 +1,1 @@
-
-web: flask db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT
+web: python init_render_db.py && gunicorn src.main:app --bind 0.0.0.0:$PORT

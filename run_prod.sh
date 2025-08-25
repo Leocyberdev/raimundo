@@ -1,35 +1,10 @@
 #!/bin/bash
 
-# Script para executar a aplicação em modo de produção
+# Script para rodar a aplicação em produção
+echo "Iniciando aplicação em produção..."
 
-echo "=== Sistema de Almoxarifado - Modo Produção ==="
-echo "Ambiente: Produção (PostgreSQL)"
+# Inicializa o banco de dados
+python init_render_db.py
 
-# Define o ambiente de produção
-export FLASK_ENV=production
-
-# Verifica se a variável de ambiente DATABASE_URL está definida
-if [ -z "$DATABASE_URL" ]; then
-    echo "ERRO: Variável de ambiente DATABASE_URL não configurada!"
-    echo "Configure: DATABASE_URL"
-    exit 1
-fi
-
-# Inicializa o banco de dados se necessário
-echo "Inicializando banco de dados..."
-cd src && python init_db.py > ../init_db.log 2>&1
-cd ..
-
-# Executa a aplicação com Gunicorn
-echo "Iniciando aplicação com Gunicorn..."
-echo "Configuração:"
-echo "- DATABASE_URL: $DATABASE_URL"
-echo "- Porta: ${PORT:-5000}"
-echo "=" * 50
-
-gunicorn -c gunicorn.conf.py src.main:app
-
-
-
-
-
+# Inicia a aplicação com Gunicorn
+exec gunicorn src.main:app --bind 0.0.0.0:$PORT
