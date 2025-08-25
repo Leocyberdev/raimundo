@@ -3,14 +3,18 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory, render_template, session, redirect, url_for
+from flask import Flask, send_from_directory, render_template, session, redirect
 from flask_cors import CORS
 from flask_migrate import Migrate
+from flask.cli import with_appcontext
+import click
+
 from src.models.user import db, User
 from src.models.almoxarifado import Produto, Obra, Funcionario, Movimentacao, Categoria, Fornecedor
 from src.routes.user import user_bp, login_required
 from src.routes.almoxarifado import almoxarifado_bp
 from src.config import config
+
 
 def create_app(config_name=None):
     """Factory function para criar a aplicação Flask"""
@@ -30,14 +34,23 @@ def create_app(config_name=None):
     app.register_blueprint(user_bp)
     app.register_blueprint(almoxarifado_bp)
     
-    # Inicializa banco de dados
+    # Inicializa banco de dados e migrate
     db.init_app(app)
-    
-    # Inicializa Flask-Migrate
-    migrate = Migrate(app, db)
+    Migrate(app, db)
 
-    # Executa criação de usuário e funcionário padrão
-    with app.app_context():
+    # 🔹 Registra comandos customizados
+    register_commands(app)
+
+    return app
+
+
+def register_commands(app):
+    """Registra comandos customizados no flask CLI"""
+
+    @app.cli.command("init-db")
+    @with_appcontext
+    def init_db():
+        """Cria usuário admin master e funcionário padrão"""
         # Criar usuário admin master se não existir
         admin_user = User.query.filter_by(username="Monter").first()
         if not admin_user:
@@ -45,13 +58,12 @@ def create_app(config_name=None):
                 username="Monter",
                 email="admin@sistema.com",
                 tipo_usuario="almoxarifado",
-            
                 ativo=True
             )
             admin_user.set_password("almox")
             db.session.add(admin_user)
             db.session.commit()
-            print("Usuário admin master criado: Monter / almox")
+            click.echo("✅ Usuário admin master criado: Monter / almox")
 
         # Criar funcionário padrão se não existir
         funcionario_padrao = Funcionario.query.filter_by(id=1).first()
@@ -64,18 +76,19 @@ def create_app(config_name=None):
             )
             db.session.add(funcionario_padrao)
             db.session.commit()
-            print("Funcionário padrão criado: Sistema")
+            click.echo("✅ Funcionário padrão criado: Sistema")
 
-    return app
 
 # Cria a aplicação
 app = create_app()
+
 
 # Inicialização do banco apenas se executado diretamente
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True, host="0.0.0.0", port=5000)
+
 
 @app.route("/")
 @app.route("/<path:path>")
@@ -99,10 +112,12 @@ def serve(path):
         else:
             return "index.html not found", 404
 
+
 @app.route("/gerenciamento")
 @login_required
 def gerenciamento():
     return render_template("gerenciamento_obras.html")
+
 
 @app.route("/locais")
 @login_required
