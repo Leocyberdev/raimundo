@@ -54,7 +54,6 @@ def create_app(config_name=None):
     return app
 
 
-
 def register_commands(app):
     """Registra comandos customizados no flask CLI"""
 
@@ -96,6 +95,8 @@ app = create_app()
 
 # Inicialização do banco apenas se executado diretamente
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, host="0.0.0.0", port=5000)
 
 
